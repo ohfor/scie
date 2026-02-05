@@ -1,0 +1,281 @@
+# Build and release on version tag
+#
+# Triggered when a version tag is pushed to the public repo.
+# Builds the DLL, packages distribution zips, creates GitHub release.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write  # Required for creating releases and uploading assets
+
+jobs:
+  build:
+    runs-on: windows-latest
+    if: github.repository == 'ohfor/scie'  # Only run in public repo
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version_num=${VERSION#v}" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Clone vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git
+          ./vcpkg/bootstrap-vcpkg.bat
+
+      - name: Configure CMake
+        run: |
+          cmake --preset release
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+
+      - name: Build DLL
+        run: |
+          cmake --build build/release --config Release
+
+      - name: Verify DLL built
+        shell: bash
+        run: |
+          if [ ! -f "build/release/Release/CraftingInventoryExtender.dll" ]; then
+            echo "::error::DLL build failed - file not found"
+            exit 1
+          fi
+          echo "DLL built successfully"
+
+      - name: Verify version consistency
+        shell: pwsh
+        run: |
+          $tagVersion = "${{ steps.version.outputs.version_num }}"
+          $failed = $false
+
+          Write-Host "Tag version: $tagVersion"
+          Write-Host ""
+
+          # 1. Version.h
+          $versionH = Get-Content include/Version.h -Raw
+          if ($versionH -match 'MAJOR\s*=\s*(\d+)') { $major = $matches[1] }
+          if ($versionH -match 'MINOR\s*=\s*(\d+)') { $minor = $matches[1] }
+          if ($versionH -match 'PATCH\s*=\s*(\d+)') { $patch = $matches[1] }
+          $vH = "$major.$minor.$patch"
+          if ($vH -ne $tagVersion) {
+            Write-Host "::error::Version.h: $vH (expected $tagVersion)"
+            $failed = $true
+          } else {
+            Write-Host "Version.h: $vH"
+          }
+
+          # 2. CMakeLists.txt
+          $cmake = Get-Content CMakeLists.txt -Raw
+          if ($cmake -match 'VERSION_MAJOR\s+(\d+)') { $cmMajor = $matches[1] }
+          if ($cmake -match 'VERSION_MINOR\s+(\d+)') { $cmMinor = $matches[1] }
+          if ($cmake -match 'VERSION_PATCH\s+(\d+)') { $cmPatch = $matches[1] }
+          $vCmake = "$cmMajor.$cmMinor.$cmPatch"
+          if ($vCmake -ne $tagVersion) {
+            Write-Host "::error::CMakeLists.txt: $vCmake (expected $tagVersion)"
+            $failed = $true
+          } else {
+            Write-Host "CMakeLists.txt: $vCmake"
+          }
+
+          # 3. vcpkg.json
+          $vcpkg = Get-Content vcpkg.json -Raw
+          if ($vcpkg -match '"version-string"\s*:\s*"(\d+\.\d+\.\d+)"') {
+            $vVcpkg = $matches[1]
+          }
+          if ($vVcpkg -ne $tagVersion) {
+            Write-Host "::error::vcpkg.json: $vVcpkg (expected $tagVersion)"
+            $failed = $true
+          } else {
+            Write-Host "vcpkg.json: $vVcpkg"
+          }
+
+          # 4. version.rc
+          $vrc = Get-Content version.rc -Raw
+          if ($vrc -match '"FileVersion",\s*"(\d+\.\d+\.\d+)') {
+            $vRc = $matches[1]
+          }
+          if ($vRc -ne $tagVersion) {
+            Write-Host "::error::version.rc: $vRc (expected $tagVersion)"
+            $failed = $true
+          } else {
+            Write-Host "version.rc: $vRc"
+          }
+
+          # 5. SCIE_MCM.psc - CurrentVersion integer (253 = 2.5.3)
+          $mcm = Get-Content scripts/papyrus/source/SCIE_MCM.psc -Raw
+          if ($mcm -match 'CurrentVersion\s*=\s*(\d+)') {
+            $mcmInt = [int]$matches[1]
+          }
+          # Convert tag version to integer: 2.5.3 -> 253
+          $parts = $tagVersion.Split('.')
+          $expectedInt = [int]$parts[0] * 100 + [int]$parts[1] * 10 + [int]$parts[2]
+          if ($mcmInt -ne $expectedInt) {
+            Write-Host "::error::SCIE_MCM.psc CurrentVersion: $mcmInt (expected $expectedInt)"
+            $failed = $true
+          } else {
+            Write-Host "SCIE_MCM.psc CurrentVersion: $mcmInt"
+          }
+
+          # 6. SCIE_MCM.psc - About page display string
+          if ($mcm -match 'LabelVersion",\s*"(\d+\.\d+\.\d+)"') {
+            $mcmStr = $matches[1]
+          }
+          if ($mcmStr -ne $tagVersion) {
+            Write-Host "::error::SCIE_MCM.psc About page: $mcmStr (expected $tagVersion)"
+            $failed = $true
+          } else {
+            Write-Host "SCIE_MCM.psc About page: $mcmStr"
+          }
+
+          if ($failed) {
+            Write-Host ""
+            Write-Error "Version mismatch detected! Update all version files before tagging."
+            exit 1
+          }
+
+          Write-Host ""
+          Write-Host "All version files consistent: $tagVersion"
+
+      - name: Build SCIE-Main package
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $staging = "mods/SCIE-Main"
+
+          # Clean staging
+          if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
+          New-Item -ItemType Directory -Path $staging -Force | Out-Null
+
+          # Create directory structure
+          New-Item -ItemType Directory -Path "$staging/SKSE/Plugins/CraftingInventoryExtender/Source" -Force | Out-Null
+          New-Item -ItemType Directory -Path "$staging/Scripts" -Force | Out-Null
+          New-Item -ItemType Directory -Path "$staging/Interface/Translations" -Force | Out-Null
+
+          # Copy files
+          Copy-Item "build/release/Release/CraftingInventoryExtender.dll" "$staging/SKSE/Plugins/"
+          Copy-Item "Data/SKSE/Plugins/CraftingInventoryExtender.ini" "$staging/SKSE/Plugins/"
+          Copy-Item "Data/SKSE/Plugins/CraftingInventoryExtender/SCIE_VanillaHomes.ini" "$staging/SKSE/Plugins/CraftingInventoryExtender/"
+          Copy-Item "Data/SKSE/Plugins/CraftingInventoryExtender/ExampleModConfig.ini" "$staging/SKSE/Plugins/CraftingInventoryExtender/"
+
+          Copy-Item "Data/CraftingInventoryExtender.esp" "$staging/"
+          Copy-Item "Data/CraftingInventoryExtenderVanillaCountFix.esp" "$staging/"
+
+          Copy-Item "scripts/papyrus/compiled/*.pex" "$staging/Scripts/"
+          Copy-Item "scripts/papyrus/source/*.psc" "$staging/SKSE/Plugins/CraftingInventoryExtender/Source/"
+
+          Copy-Item "Data/Interface/Translations/CraftingInventoryExtender_ENGLISH.txt" "$staging/Interface/Translations/"
+
+          Copy-Item "LICENSE.txt" "$staging/"
+
+          # Create zip (from staging contents, not staging folder)
+          $zipPath = "mods/SCIE-Main-$version.zip"
+          if (Test-Path $zipPath) { Remove-Item $zipPath }
+          Compress-Archive -Path "$staging/*" -DestinationPath $zipPath
+
+          # Verify no Data/ wrapper
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
+          $hasData = $zip.Entries | Where-Object { $_.FullName -like "Data/*" -or $_.FullName -like "Data\*" }
+          $zip.Dispose()
+
+          if ($hasData) {
+            Write-Error "Archive contains Data/ wrapper - this is wrong!"
+            exit 1
+          }
+
+          Write-Host "Created: $zipPath"
+
+      - name: Build SCIE-HomeConfigs package
+        shell: pwsh
+        run: |
+          $staging = "mods/SCIE-HomeConfigs"
+
+          # Clean staging
+          if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
+          New-Item -ItemType Directory -Path "$staging/SKSE/Plugins/CraftingInventoryExtender" -Force | Out-Null
+
+          # Copy all SCIE_*.ini except VanillaHomes (that's in main)
+          $inis = Get-ChildItem "Data/SKSE/Plugins/CraftingInventoryExtender/SCIE_*.ini" |
+                  Where-Object { $_.Name -ne "SCIE_VanillaHomes.ini" }
+
+          foreach ($ini in $inis) {
+            Copy-Item $ini.FullName "$staging/SKSE/Plugins/CraftingInventoryExtender/"
+          }
+
+          # Create zip
+          $zipPath = "mods/SCIE-HomeConfigs.zip"
+          if (Test-Path $zipPath) { Remove-Item $zipPath }
+          Compress-Archive -Path "$staging/*" -DestinationPath $zipPath
+
+          Write-Host "Created: $zipPath"
+
+      - name: Verify SCIE-Babel package
+        shell: pwsh
+        run: |
+          # Pre-built babel zip is synced from private repo
+          if (-not (Test-Path "mods/SCIE-Babel.zip")) {
+            Write-Error "SCIE-Babel.zip not found - rebuild locally and commit"
+            exit 1
+          }
+
+          Write-Host "Found: mods/SCIE-Babel.zip"
+
+      - name: Extract release notes
+        id: release_notes
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version_num }}"
+
+          # CHANGELOG must exist
+          if [ ! -f "docs/CHANGELOG.md" ]; then
+            echo "::error::CHANGELOG.md not found in docs/"
+            echo "::error::A release without a changelog is not a release."
+            exit 1
+          fi
+
+          # Extract section for this version
+          NOTES=$(awk -v ver="$VERSION" '
+            /^## \[/ {
+              if (found) exit
+              if (index($0, "["ver"]")) found=1
+            }
+            found && !/^## \[/ { print }
+          ' docs/CHANGELOG.md)
+
+          # Changelog entry must exist for this version
+          if [ -z "$NOTES" ]; then
+            echo "::error::No changelog entry found for version $VERSION"
+            echo "::error::Add a ## [$VERSION] section to docs/CHANGELOG.md before tagging."
+            exit 1
+          fi
+
+          # Write to file for multi-line handling
+          echo "$NOTES" > release_notes.md
+          echo "Release notes extracted for $VERSION"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: "SCIE ${{ steps.version.outputs.version }}"
+          body_path: release_notes.md
+          files: |
+            mods/SCIE-Main-${{ steps.version.outputs.version }}.zip
+            mods/SCIE-HomeConfigs.zip
+            mods/SCIE-Babel.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,27 @@
+# Build outputs
+build/*
+!build/.gitkeep
+mods/*
+!mods/.gitkeep
+!mods/SCIE-Babel.zip
+*.pdb
+
+# IDE
+.vs/
+.vscode/
+*.user
+
+# Claude Code local settings (may contain machine-specific paths)
+.claude/
+.mcp.json
+todo/
+
+# Temp files
+*.tmp
+*.log
+replacements.txt
+
+# ESP files from other mods (for analysis)
+*.esp
+*.esm
+!Data/*.esp
