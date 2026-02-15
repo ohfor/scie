@@ -80,8 +80,11 @@ int oidModEnabledToggle
 int oidAutoGrantPowersToggle
 int oidGrantPowersButton
 int oidRevokePowersButton
-int oidDebugLoggingToggle
+int oidLogLevelMenu
 int oidUninstallButton
+
+; Log level menu options
+string[] logLevelNames
 
 ; Mod Author Tools page
 int oidScanButton
@@ -109,7 +112,7 @@ string[] stationNames
 
 Event OnConfigInit()
     ModName = "SCIE"
-    CurrentVersion = 253  ; v2.5.3: Fix stale source index mapping after crafting
+    CurrentVersion = 254  ; v2.5.4: Public API for mod authors
     InitializePages()
     InitializeFilteringArrays()
 EndEvent
@@ -181,6 +184,11 @@ Function InitializeFilteringArrays()
     stationNames[1] = "$SCIE_StationTempering"
     stationNames[2] = "$SCIE_StationEnchanting"
     stationNames[3] = "$SCIE_StationAlchemy"
+
+    logLevelNames = new string[3]
+    logLevelNames[0] = "$SCIE_LogLevelInfo"
+    logLevelNames[1] = "$SCIE_LogLevelDebug"
+    logLevelNames[2] = "$SCIE_LogLevelTrace"
 EndFunction
 
 Function ResetOptionIDs()
@@ -204,7 +212,7 @@ Function ResetOptionIDs()
     oidAutoGrantPowersToggle = -1
     oidGrantPowersButton = -1
     oidRevokePowersButton = -1
-    oidDebugLoggingToggle = -1
+    oidLogLevelMenu = -1
     oidUninstallButton = -1
 
     ; Mod Author Tools page
@@ -229,7 +237,7 @@ EndFunction
 
 Event OnPageReset(string page)
     ; Always ensure pages are initialized (handles existing saves that missed OnVersionUpdate)
-    if Pages.Length != 7 || !stationNames || stationNames.Length != 4 || !formTypeInfoTexts || formTypeInfoTexts.Length != 12
+    if Pages.Length != 7 || !stationNames || stationNames.Length != 4 || !formTypeInfoTexts || formTypeInfoTexts.Length != 12 || !logLevelNames || logLevelNames.Length != 3
         InitializePages()
         InitializeFilteringArrays()
     endif
@@ -573,9 +581,9 @@ Function RenderMaintenancePage()
     bool modEnabled = SCIE_NativeFunctions.GetModEnabled()
     oidModEnabledToggle = AddToggleOption("$SCIE_LabelModEnabled", modEnabled)
 
-    ; Debug logging toggle
-    bool debugLogging = SCIE_NativeFunctions.GetDebugLogging()
-    oidDebugLoggingToggle = AddToggleOption("$SCIE_LabelDebugLogging", debugLogging)
+    ; Log level menu
+    int currentLogLevel = SCIE_NativeFunctions.GetLogLevel()
+    oidLogLevelMenu = AddMenuOption("$SCIE_LabelLogLevel", logLevelNames[currentLogLevel])
 
     AddEmptyOption()
     AddHeaderOption("$SCIE_HeaderPowers")
@@ -612,7 +620,7 @@ Function RenderAboutPage()
     SetCursorPosition(0)
 
     AddHeaderOption("$SCIE_HeaderSCIE")
-    AddTextOption("$SCIE_LabelVersion", "2.5.3")
+    AddTextOption("$SCIE_LabelVersion", "2.5.4")
     AddTextOption("$SCIE_LabelAuthor", "Ohfor")
 
     AddEmptyOption()
@@ -686,8 +694,8 @@ Event OnOptionHighlight(int option)
         SetInfoText("$SCIE_InfoGrantPowers")
     elseif option == oidRevokePowersButton
         SetInfoText("$SCIE_InfoRevokePowers")
-    elseif option == oidDebugLoggingToggle
-        SetInfoText("$SCIE_InfoDebugLogging")
+    elseif option == oidLogLevelMenu
+        SetInfoText("$SCIE_InfoLogLevel")
     elseif option == oidClearCellButton
         SetInfoText("$SCIE_InfoClearCell")
     elseif option == oidUninstallButton
@@ -758,11 +766,6 @@ Event OnOptionSelect(int option)
     elseif option == oidAutoGrantPowersToggle
         bool newValue = !SCIE_NativeFunctions.GetAutoGrantPowers()
         SCIE_NativeFunctions.SetAutoGrantPowers(newValue)
-        SetToggleOptionValue(option, newValue)
-
-    elseif option == oidDebugLoggingToggle
-        bool newValue = !SCIE_NativeFunctions.GetDebugLogging()
-        SCIE_NativeFunctions.SetDebugLogging(newValue)
         SetToggleOptionValue(option, newValue)
 
     elseif option == oidGlobalContainersToggle
@@ -908,6 +911,10 @@ Event OnOptionMenuOpen(int option)
         SetMenuDialogOptions(stationNames)
         SetMenuDialogStartIndex(selectedStation)
         SetMenuDialogDefaultIndex(0)
+    elseif option == oidLogLevelMenu
+        SetMenuDialogOptions(logLevelNames)
+        SetMenuDialogStartIndex(SCIE_NativeFunctions.GetLogLevel())
+        SetMenuDialogDefaultIndex(0)  ; Default to Info
     endif
 EndEvent
 
@@ -916,6 +923,9 @@ Event OnOptionMenuAccept(int option, int index)
         selectedStation = index
         ; Refresh page to show settings for newly selected station
         ForcePageReset()
+    elseif option == oidLogLevelMenu
+        SCIE_NativeFunctions.SetLogLevel(index)
+        SetMenuOptionValue(option, logLevelNames[index])
     endif
 EndEvent
 
@@ -933,9 +943,9 @@ Event OnOptionDefault(int option)
         SCIE_NativeFunctions.SetAutoGrantPowers(true)
         SetToggleOptionValue(option, true)
 
-    elseif option == oidDebugLoggingToggle
-        SCIE_NativeFunctions.SetDebugLogging(false)
-        SetToggleOptionValue(option, false)
+    elseif option == oidLogLevelMenu
+        SCIE_NativeFunctions.SetLogLevel(0)  ; Default to Info
+        SetMenuOptionValue(option, logLevelNames[0])
 
     elseif option == oidGlobalContainersToggle
         SCIE_NativeFunctions.SetEnableGlobalContainers(true)

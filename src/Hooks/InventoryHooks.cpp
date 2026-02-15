@@ -3,6 +3,7 @@
 #include "Services/ContainerManager.h"
 #include "Services/ContainerRegistry.h"
 #include "Services/INISettings.h"
+#include "Services/SourceScanner.h"
 
 #include <MinHook.h>
 #include <Windows.h>
@@ -62,6 +63,11 @@ namespace Hooks::InventoryHooks {
 
             // WorkBenchData contains benchType field
             auto benchType = furn->workBenchData.benchType.get();
+
+            // Log the bench type for debugging station-specific issues
+            const char* furnName = furn->GetName() ? furn->GetName() : "unnamed";
+            logger::info("Detected furniture '{}' with BenchType {} (raw value: {})",
+                furnName, static_cast<int>(benchType), static_cast<int>(benchType));
 
             // Map BenchType to StationType per feature plan
             // See docs/Architecture.md "Appendix: Crafting Station Reference"
@@ -198,215 +204,25 @@ namespace Hooks::InventoryHooks {
                 furniture ? static_cast<std::uint32_t>(furniture->GetFormID()) : 0,
                 g_craftingSession.isCookingStation ? " [cooking]" : "");
 
-            // Add player as first source
-            auto t1 = std::chrono::high_resolution_clock::now();
-            std::int32_t playerCount = _originalGetContainerItemCount(player, false, true);
-            auto t2 = std::chrono::high_resolution_clock::now();
-            logger::debug("[PERF] Player inventory count took {:.2f}ms",
-                std::chrono::duration<double, std::milli>(t2 - t1).count());
+            // Use SourceScanner to collect sources and build cache
+            Services::ScanConfig scanConfig;
+            scanConfig.stationType = g_craftingSession.stationType;
+            scanConfig.isCookingStation = g_craftingSession.isCookingStation;
+            scanConfig.includeGlobals = true;
+            scanConfig.includeFollowers = true;
+            scanConfig.maxDistance = 0.0f;  // Use INI setting
 
-            g_craftingSession.sources.push_back({
-                player->CreateRefHandle(),
-                playerCount,
-                0  // Player starts at index 0
-            });
-            logger::info("Session source: Player ({} items)", playerCount);
+            auto scanResult = Services::SourceScanner::GetSingleton()->ScanSources(
+                scanConfig, _originalGetContainerItemCount);
 
-            // Add nearby containers
-            std::int32_t currentIndex = playerCount;
-
-            auto t3 = std::chrono::high_resolution_clock::now();
-            auto nearbyContainers = containerMgr->GetNearbyCraftingContainers();
-            auto t4 = std::chrono::high_resolution_clock::now();
-            logger::debug("[PERF] GetNearbyCraftingContainers took {:.2f}ms ({} containers)",
-                std::chrono::duration<double, std::milli>(t4 - t3).count(), nearbyContainers.size());
-
-            auto t5 = std::chrono::high_resolution_clock::now();
-            for (auto* container : nearbyContainers) {
-                if (!container) continue;
-
-                std::int32_t count = _originalGetContainerItemCount(container, false, true);
-                if (count > 0) {
-                    g_craftingSession.sources.push_back({
-                        container->CreateRefHandle(),
-                        count,
-                        currentIndex
-                    });
-
-                    auto baseName = container->GetBaseObject() ? container->GetBaseObject()->GetName() : "Unknown";
-                    logger::info("Session source: {} ({:08X}) - {} items at index {}",
-                        baseName, static_cast<std::uint32_t>(container->GetFormID()), count, currentIndex);
-
-                    currentIndex += count;
-                }
-            }
-            auto t6 = std::chrono::high_resolution_clock::now();
-            logger::debug("[PERF] Container count loop took {:.2f}ms",
-                std::chrono::duration<double, std::milli>(t6 - t5).count());
-
-            // Add global containers (accessible from anywhere)
-            // Skip any that were already added as local containers to prevent double-counting
-            auto t6b = std::chrono::high_resolution_clock::now();
-            auto* registry = Services::ContainerRegistry::GetSingleton();
-            auto globalContainers = registry->GetGlobalContainers();
-
-            // Helper to check if a container is already in sources
-            auto isAlreadyInSources = [](RE::FormID formID) {
-                for (const auto& source : g_craftingSession.sources) {
-                    auto* ref = source.ref.get().get();
-                    if (ref && ref->GetFormID() == formID) {
-                        return true;
-                    }
-                }
-                return false;
-            };
-
-            for (auto* container : globalContainers) {
-                if (!container) continue;
-
-                // Skip if already added as a local container (prevents double-counting)
-                if (isAlreadyInSources(container->GetFormID())) {
-                    auto baseName = container->GetBaseObject() ? container->GetBaseObject()->GetName() : "Unknown";
-                    logger::debug("Global container {} ({:08X}) already in sources, skipping",
-                        baseName, static_cast<std::uint32_t>(container->GetFormID()));
-                    continue;
-                }
-
-                std::int32_t count = _originalGetContainerItemCount(container, false, true);
-                if (count > 0) {
-                    g_craftingSession.sources.push_back({
-                        container->CreateRefHandle(),
-                        count,
-                        currentIndex
-                    });
-
-                    auto baseName = container->GetBaseObject() ? container->GetBaseObject()->GetName() : "Unknown";
-                    logger::info("Session source (GLOBAL): {} ({:08X}) - {} items at index {}",
-                        baseName, static_cast<std::uint32_t>(container->GetFormID()), count, currentIndex);
-
-                    currentIndex += count;
-                }
-            }
-            auto t6c = std::chrono::high_resolution_clock::now();
-            if (!globalContainers.empty()) {
-                logger::debug("[PERF] Global containers took {:.2f}ms ({} containers)",
-                    std::chrono::duration<double, std::milli>(t6c - t6b).count(), globalContainers.size());
-            }
-
-            // Add nearby followers/spouses as sources
-            auto t6d = std::chrono::high_resolution_clock::now();
-            if (Services::INISettings::GetSingleton()->GetEnableFollowerInventory()) {
-                auto nearbyFollowers = containerMgr->GetNearbyFollowers();
-
-                for (auto* follower : nearbyFollowers) {
-                    if (!follower) continue;
-
-                    // Skip if already in sources (shouldn't happen, but safety check)
-                    if (isAlreadyInSources(follower->GetFormID())) continue;
-
-                    std::int32_t count = _originalGetContainerItemCount(follower, false, true);
-                    if (count > 0) {
-                        g_craftingSession.sources.push_back({
-                            follower->CreateRefHandle(),
-                            count,
-                            currentIndex,
-                            true  // isFollower
-                        });
-
-                        auto displayName = follower->GetDisplayFullName() ? follower->GetDisplayFullName() : "Unknown";
-                        logger::info("Session source (FOLLOWER): {} ({:08X}) - {} items at index {}",
-                            displayName, static_cast<std::uint32_t>(follower->GetFormID()), count, currentIndex);
-
-                        currentIndex += count;
-
-                        // Check for NFF Additional Inventory container
-                        auto* followerActor = follower->As<RE::Actor>();
-                        if (followerActor) {
-                            auto* nffContainer = containerMgr->GetNFFAdditionalInventory(followerActor);
-                            if (nffContainer && !isAlreadyInSources(nffContainer->GetFormID())) {
-                                std::int32_t nffCount = _originalGetContainerItemCount(nffContainer, false, true);
-                                if (nffCount > 0) {
-                                    g_craftingSession.sources.push_back({
-                                        nffContainer->CreateRefHandle(),
-                                        nffCount,
-                                        currentIndex,
-                                        true  // isFollower - same safety filter
-                                    });
-
-                                    auto nffDisplayName = follower->GetDisplayFullName() ? follower->GetDisplayFullName() : "Unknown";
-                                    logger::info("Session source (NFF ADDITIONAL): {}'s satchel ({:08X}) - {} items at index {}",
-                                        nffDisplayName, static_cast<std::uint32_t>(nffContainer->GetFormID()), nffCount, currentIndex);
-
-                                    currentIndex += nffCount;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            auto t6e = std::chrono::high_resolution_clock::now();
-            logger::debug("[PERF] Follower scan took {:.2f}ms",
-                std::chrono::duration<double, std::milli>(t6e - t6d).count());
-
-            // Build set of favorited items from player inventory (Essential Favorites compatibility)
-            // Skip favorited items to respect user's "protected" items
-            auto t7 = std::chrono::high_resolution_clock::now();
-            std::unordered_set<RE::TESBoundObject*> favoritedItems;
-            {
-                auto playerInventory = player->GetInventory();
-                for (auto& [item, data] : playerInventory) {
-                    if (item && data.second && data.second->IsFavorited()) {
-                        favoritedItems.insert(item);
-                        logger::debug("Skipping favorited item: {}", item->GetName());
-                    }
-                }
-            }
-            if (!favoritedItems.empty()) {
-                logger::info("Respecting {} favorited items (Essential Favorites compatibility)",
-                    favoritedItems.size());
-            }
-
-            // Build inventory cache - snapshot all item counts once
-            for (auto& source : g_craftingSession.sources) {
-                auto* container = source.ref.get().get();
-                if (!container) continue;
-
-                auto inventory = container->GetInventory();
-                for (auto& [item, data] : inventory) {
-                    if (item && data.first > 0) {
-                        // Skip favorited items
-                        if (favoritedItems.contains(item)) {
-                            continue;
-                        }
-                        // Apply follower safety filter
-                        if (source.isFollower && !IsFollowerSafeFormType(item->GetFormType(), g_craftingSession.isCookingStation)) {
-                            continue;
-                        }
-                        g_craftingSession.inventoryCache[item] += data.first;
-
-                        // Per-source item breakdown for debugging
-                        auto sourceName = container->IsPlayerRef() ? "Player"
-                            : (container->GetDisplayFullName() ? container->GetDisplayFullName() : "Unknown");
-                        logger::debug("  Cache: {} x{} from {} ({:08X}){}",
-                            item->GetName(), data.first,
-                            sourceName,
-                            static_cast<std::uint32_t>(container->GetFormID()),
-                            source.isFollower ? " [follower]" : "");
-                    }
-                }
-            }
-            g_craftingSession.favoritedItemsExcluded = favoritedItems.size();
-            auto t8 = std::chrono::high_resolution_clock::now();
-            logger::debug("[PERF] Inventory cache build took {:.2f}ms ({} unique items, {} favorited skipped)",
-                std::chrono::duration<double, std::milli>(t8 - t7).count(),
-                g_craftingSession.inventoryCache.size(), favoritedItems.size());
+            // Transfer scan results to session
+            g_craftingSession.sources = std::move(scanResult.sources);
+            g_craftingSession.inventoryCache = std::move(scanResult.inventoryCache);
+            g_craftingSession.favoritedItemsExcluded = scanResult.favoritedItemsExcluded;
 
             auto sessionEndTime = std::chrono::high_resolution_clock::now();
             logger::debug("[PERF] === SESSION INIT TOTAL: {:.2f}ms ===",
                 std::chrono::duration<double, std::milli>(sessionEndTime - sessionStartTime).count());
-
-            logger::info("Crafting session started: {} sources, {} total items, {} unique cached",
-                g_craftingSession.sources.size(), currentIndex, g_craftingSession.inventoryCache.size());
 
             return true;
         }
@@ -463,7 +279,7 @@ namespace Hooks::InventoryHooks {
             // Clear deduplication cache when menu starts a new iteration (index 0)
             // This prevents count inflation if the menu re-queries all items
             if (a_idx == 0 && !g_craftingSession.seenItems.empty()) {
-                logger::debug("GetInventoryItemEntryAtIdx: clearing dedup cache (new iteration)");
+                logger::trace("GetInventoryItemEntryAtIdx: clearing dedup cache (new iteration)");
                 g_craftingSession.seenItems.clear();
             }
 
@@ -485,11 +301,33 @@ namespace Hooks::InventoryHooks {
             // Calculate local index within this container
             std::int32_t localIdx = g_craftingSession.GetLocalIndex(source, a_idx);
 
+            // Defensive bounds check - catch stale index mapping before calling engine
+            if (localIdx < 0 || localIdx >= source->itemCount) {
+                logger::error("Hook2 bounds fail: idx={}, localIdx={}, source.itemCount={}, startIndex={}, needsRefresh={}, container={:08X}",
+                    a_idx, localIdx, source->itemCount, source->startIndex,
+                    g_craftingSession.needsCacheRefresh,
+                    static_cast<std::uint32_t>(container->GetFormID()));
+                return nullptr;
+            }
+
             // Get the entry from the actual container
             auto* entry = _originalGetInventoryItemEntryAtIdx(container, localIdx, false);
+
+            // Defensive pointer validation - catch garbage/sentinel returns from engine
+            if (!entry) {
+                return nullptr;
+            }
+            if (reinterpret_cast<std::uintptr_t>(entry) < 0x10000) {
+                logger::error("Hook2 bad entry: {:p} for container {:08X} localIdx={}, source.itemCount={}",
+                    static_cast<void*>(entry),
+                    static_cast<std::uint32_t>(container->GetFormID()),
+                    localIdx, source->itemCount);
+                return nullptr;
+            }
+
             // Note: Use entry->object directly to avoid Windows GetObject macro collision
-            if (!entry || !entry->object) {
-                return entry;
+            if (!entry->object) {
+                return nullptr;
             }
 
             auto* item = entry->object;
@@ -502,7 +340,7 @@ namespace Hooks::InventoryHooks {
             if (!container->IsPlayerRef()) {
                 auto* settings = Services::INISettings::GetSingleton();
                 if (!settings->ShouldPullFormType(g_craftingSession.stationType, item->GetFormType())) {
-                    logger::debug("GetInventoryItemEntryAtIdx: filtering {} from container (form type {} disabled for {})",
+                    logger::trace("GetInventoryItemEntryAtIdx: filtering {} from container (form type {} disabled for {})",
                         item->GetName(),
                         static_cast<int>(item->GetFormType()),
                         Services::INISettings::GetStationKeyPrefix(g_craftingSession.stationType));
@@ -511,7 +349,7 @@ namespace Hooks::InventoryHooks {
 
                 // Apply follower safety filter
                 if (source->isFollower && !IsFollowerSafeFormType(item->GetFormType(), g_craftingSession.isCookingStation)) {
-                    logger::debug("GetInventoryItemEntryAtIdx: filtering {} from follower (unsafe form type {})",
+                    logger::trace("GetInventoryItemEntryAtIdx: filtering {} from follower (unsafe form type {})",
                         item->GetName(), static_cast<int>(item->GetFormType()));
                     return nullptr;
                 }
@@ -539,7 +377,7 @@ namespace Hooks::InventoryHooks {
             auto it = g_craftingSession.seenItems.find(item);
             if (it != g_craftingSession.seenItems.end()) {
                 // Duplicate — suppress it. The first-seen entry has merged counts.
-                logger::debug("GetInventoryItemEntryAtIdx: deduplicating {} - suppressing duplicate (count {} from {})",
+                logger::trace("GetInventoryItemEntryAtIdx: deduplicating {} - suppressing duplicate (count {} from {})",
                     item->GetName(), entry->countDelta, container->IsPlayerRef() ? "player" : "container");
                 return nullptr;
             }
@@ -553,7 +391,7 @@ namespace Hooks::InventoryHooks {
                 entry->countDelta = cachedIt->second;
             }
             g_craftingSession.seenItems[item] = entry;
-            logger::debug("GetInventoryItemEntryAtIdx: first {} x{} (merged from cache, original entry from {})",
+            logger::trace("GetInventoryItemEntryAtIdx: first {} x{} (merged from cache, original entry from {})",
                 item->GetName(), entry->countDelta,
                 container->IsPlayerRef() ? "player" : "container");
             return entry;
@@ -580,13 +418,22 @@ namespace Hooks::InventoryHooks {
 
             auto* playerInv = player->GetInventoryChanges();
             if (a_inv != playerInv) {
-                // Not player's inventory, use original
+                // VR path: VR's COBJ system queries a different InventoryChanges for recipe
+                // availability checks. Check our cache anyway - if the item is there, return
+                // our merged count. This fixes VR recipe availability for container items.
+                auto cachedCount = g_craftingSession.GetCachedItemCount(a_item);
+                if (cachedCount > 0) {
+                    logger::trace("GetInventoryItemCount({}): returning {} (VR bypass - cached)",
+                        a_item->GetName(), cachedCount);
+                    return cachedCount;
+                }
+                // Item not in cache - fall through to original
                 return _originalGetInventoryItemCount(a_inv, a_item, a_filter);
             }
 
             // Refresh cache and source indices if flagged (after crafting)
             if (g_craftingSession.needsCacheRefresh) {
-                logger::debug("GetInventoryItemCount: refreshing cache after craft");
+                logger::trace("GetInventoryItemCount: refreshing cache after craft");
                 RefreshSessionAfterCraft();
             }
 
@@ -598,11 +445,11 @@ namespace Hooks::InventoryHooks {
 
             // Log every 500 calls (less frequent since it's fast now)
             if (s_getItemCountCalls % 500 == 0) {
-                logger::debug("[PERF] GetInventoryItemCount: {} calls (using cache)",
+                logger::trace("[PERF] GetInventoryItemCount: {} calls (using cache)",
                     s_getItemCountCalls.load());
             }
 
-            logger::debug("GetInventoryItemCount({}): returning {} (cached)",
+            logger::trace("GetInventoryItemCount({}): returning {} (cached)",
                 a_item ? a_item->GetName() : "null", total);
             return total;
         }
@@ -652,7 +499,7 @@ namespace Hooks::InventoryHooks {
                 std::int32_t toRemove = std::min(remaining, available);
 
                 if (toRemove > 0) {
-                    logger::debug("RemoveItem: {} x{} from {:08X}",
+                    logger::trace("RemoveItem: {} x{} from {:08X}",
                         a_item->GetName(), toRemove,
                         static_cast<std::uint32_t>(container->GetFormID()));
 
@@ -679,7 +526,7 @@ namespace Hooks::InventoryHooks {
             std::int32_t actuallyRemoved = a_count - remaining;
             if (actuallyRemoved > 0) {
                 g_craftingSession.DecrementCachedCount(a_item, actuallyRemoved);
-                logger::debug("RemoveItem: cache updated, {} x{} removed",
+                logger::trace("RemoveItem: cache updated, {} x{} removed",
                     a_item->GetName(), actuallyRemoved);
 
                 // Flag cache for refresh on next query to pick up newly crafted items
@@ -691,7 +538,7 @@ namespace Hooks::InventoryHooks {
             // calling original with count=0 and a_extraList risks passing a stale
             // ExtraDataList pointer (the per-source removal may have freed/modified it).
             if (remaining > 0) {
-                logger::debug("RemoveItem: passing remaining {} to original", remaining);
+                logger::trace("RemoveItem: passing remaining {} to original", remaining);
                 return _originalRemoveItem(a_this, a_result, a_item, remaining, a_reason,
                     a_extraList, a_moveToRef, a_dropLoc, a_rotate);
             }

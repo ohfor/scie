@@ -1,6 +1,8 @@
 #pragma once
 
-namespace Hooks::InventoryHooks {
+namespace Hooks {
+    // Forward declarations for use by SourceScanner
+    namespace InventoryHooks {
     /// Initialize MinHook and install all inventory hooks
     /// Must be called during plugin load (before game data is loaded)
     /// Returns true if all hooks were installed successfully
@@ -18,8 +20,9 @@ namespace Hooks::InventoryHooks {
         RE::TESBoundObject*, std::int32_t, RE::ITEM_REMOVE_REASON, RE::ExtraDataList*,
         RE::TESObjectREFR*, const RE::NiPoint3*, const RE::NiPoint3*);
 
-    /// Get the original function pointers (for use by CraftingSession)
+    /// Get the original function pointers (for use by CraftingSession and SourceScanner)
     GetContainerItemCount_t GetOriginalGetContainerItemCount();
     GetInventoryItemEntryAtIdx_t GetOriginalGetInventoryItemEntryAtIdx();
     GetInventoryItemCount_t GetOriginalGetInventoryItemCount();
-}
+    }  // namespace InventoryHooks
+}  // namespace Hooks

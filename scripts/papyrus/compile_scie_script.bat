@@ -88,6 +88,14 @@ if "%~1"=="" (
     echo Compiled: %~1.pex
 )
 
+REM === Sanitize PII from compiled scripts ===
+echo.
+echo Sanitizing PII from compiled scripts...
+python "%~dp0..\sanitize_pex.py" --dir "%OUTPUT%"
+if !errorlevel! neq 0 (
+    echo WARNING: PEX sanitization failed
+)
+
 echo.
 echo To copy compiled scripts back to repo:
 echo   copy /Y "%OUTPUT%\SCIE_*.pex" "%~dp0compiled\"

@@ -57,11 +57,15 @@ namespace Hooks {
         /// Duplicates are suppressed with nullptr.
         std::unordered_map<RE::TESBoundObject*, RE::InventoryEntryData*> seenItems;
 
+        /// Track FormIDs that failed global lookup (VR limitation) to show notification only once
+        std::unordered_set<RE::FormID> notifiedFailedGlobals;
+
         void Reset() {
             furniture = RE::ObjectRefHandle();
             sources.clear();
             inventoryCache.clear();
             seenItems.clear();
+            notifiedFailedGlobals.clear();
             active = false;
             needsCacheRefresh = false;
             stationType = Services::StationType::Crafting;

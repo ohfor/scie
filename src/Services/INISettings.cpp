@@ -21,8 +21,8 @@ namespace Services {
             logger::info("INI file not found at {}, using defaults", iniPath.string());
         }
 
-        logger::info("Settings: Enabled={}, MaxDistance={:.0f}, PlayerFirst={}, AddPowers={}, GlobalContainers={}, INIContainers={}, FollowerInv={}, AllowUnsafe={}, DebugLog={}",
-            m_enabled, m_maxContainerDistance, m_consumeFromPlayerFirst, m_addPowersToPlayer, m_enableGlobalContainers, m_enableINIContainers, m_enableFollowerInventory, m_allowUnsafeContainers, m_debugLogging);
+        logger::info("Settings: Enabled={}, MaxDistance={:.0f}, PlayerFirst={}, AddPowers={}, GlobalContainers={}, INIContainers={}, FollowerInv={}, AllowUnsafe={}, LogLevel={}",
+            m_enabled, m_maxContainerDistance, m_consumeFromPlayerFirst, m_addPowersToPlayer, m_enableGlobalContainers, m_enableINIContainers, m_enableFollowerInventory, m_allowUnsafeContainers, static_cast<int>(m_logLevel));
 
         // Apply debug logging setting
         ApplyLogLevel();
@@ -118,8 +118,23 @@ namespace Services {
                     m_allowUnsafeContainers = ParseBool(value, m_allowUnsafeContainers);
                 }
             } else if (currentSection == "debug") {
-                if (keyLower == "bdebuglogging") {
-                    m_debugLogging = ParseBool(value, m_debugLogging);
+                if (keyLower == "iloglevel") {
+                    // New setting: iLogLevel=0/1/2
+                    try {
+                        int level = std::stoi(value);
+                        if (level >= 0 && level <= 2) {
+                            m_logLevel = static_cast<LogLevel>(level);
+                        }
+                    } catch (...) {
+                        // Keep default
+                    }
+                } else if (keyLower == "bdebuglogging") {
+                    // Backward compat: bDebugLogging=true maps to Debug level
+                    // Only apply if iLogLevel wasn't already set (iLogLevel takes precedence)
+                    bool debugEnabled = ParseBool(value, false);
+                    if (debugEnabled && m_logLevel == LogLevel::Info) {
+                        m_logLevel = LogLevel::Debug;
+                    }
                 }
             } else if (currentSection == "filtering") {
                 // Parse keys like "bCrafting_WEAP", "bTempering_MISC", etc.
@@ -244,8 +259,8 @@ namespace Services {
         file << "bAllowUnsafeContainers=" << (m_allowUnsafeContainers ? "true" : "false") << "\n";
         file << "\n";
         file << "[Debug]\n";
-        file << "; Enable verbose logging for troubleshooting\n";
-        file << "bDebugLogging=" << (m_debugLogging ? "true" : "false") << "\n";
+        file << "; Log verbosity: 0=Info (normal), 1=Debug (troubleshooting), 2=Trace (extreme detail)\n";
+        file << "iLogLevel=" << static_cast<int>(m_logLevel) << "\n";
         file << "\n";
 
         // Write filtering settings
@@ -322,18 +337,41 @@ namespace Services {
         logger::info("AllowUnsafeContainers set to {}", a_value);
     }
 
-    void INISettings::SetDebugLogging(bool a_value) {
+    void INISettings::SetLogLevel(LogLevel a_level) {
         std::lock_guard lock(m_settingsMutex);
-        m_debugLogging = a_value;
-        logger::info("DebugLogging set to {}", a_value);
+        m_logLevel = a_level;
+        logger::info("LogLevel set to {}", static_cast<int>(a_level));
         ApplyLogLevel();
     }
 
+    void INISettings::SetDebugLogging(bool a_value) {
+        // Backward compat wrapper
+        SetLogLevel(a_value ? LogLevel::Debug : LogLevel::Info);
+    }
+
     void INISettings::ApplyLogLevel() {
-        auto level = m_debugLogging ? spdlog::level::debug : spdlog::level::info;
+        spdlog::level::level_enum level;
+        const char* levelName;
+
+        switch (m_logLevel) {
+            case LogLevel::Debug:
+                level = spdlog::level::debug;
+                levelName = "debug";
+                break;
+            case LogLevel::Trace:
+                level = spdlog::level::trace;
+                levelName = "trace";
+                break;
+            case LogLevel::Info:
+            default:
+                level = spdlog::level::info;
+                levelName = "info";
+                break;
+        }
+
         spdlog::set_level(level);
-        spdlog::default_logger()->flush_on(level);  // Also flush at this level
-        logger::info("Log level set to {}", m_debugLogging ? "debug" : "info");
+        spdlog::default_logger()->flush_on(level);
+        logger::info("Log level set to {}", levelName);
     }
 
     // ========================================================================

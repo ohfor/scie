@@ -25,3 +25,4 @@ replacements.txt
 *.esp
 *.esm
 !Data/*.esp
+!patches/*.esp

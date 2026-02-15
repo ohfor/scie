@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.21)
 # ---- Versioning ----
 set(VERSION_MAJOR 2)
 set(VERSION_MINOR 5)
-set(VERSION_PATCH 3)
+set(VERSION_PATCH 4)
 
 # ---- Project ----
 project(
@@ -61,7 +61,10 @@ set(SOURCES
     src/Services/ContainerManager.cpp
     src/Services/ContainerRegistry.cpp
     src/Services/INISettings.cpp
+    src/Services/SourceScanner.cpp
+    src/Services/APIService.cpp
     src/Services/TranslationService.cpp
+    src/API/APIMessaging.cpp
     src/Papyrus/PapyrusInterface.cpp
 )
 
@@ -73,7 +76,10 @@ set(HEADERS
     include/Services/ContainerManager.h
     include/Services/ContainerRegistry.h
     include/Services/INISettings.h
+    include/Services/SourceScanner.h
+    include/Services/APIService.h
     include/Services/TranslationService.h
+    include/API/APIMessaging.h
     include/Papyrus/PapyrusInterface.h
 )
 

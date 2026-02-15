@@ -153,7 +153,7 @@ namespace Services {
 
         // Log any actor that's a mount (for debugging)
         if (isMount) {
-            logger::debug("Mount check: {:08X} '{}' - IsAMount={}, InPlayerHorseFaction={}, InCHHorseFaction={}, IsDead={}",
+            logger::trace("Mount check: {:08X} '{}' - IsAMount={}, InPlayerHorseFaction={}, InCHHorseFaction={}, IsDead={}",
                 a_ref->GetFormID(),
                 a_ref->GetDisplayFullName() ? a_ref->GetDisplayFullName() : "unnamed",
                 isMount, inVanillaFaction, inCHFaction, isDead);
@@ -252,7 +252,7 @@ namespace Services {
                 containerRefs++;
                 // Log all containers we find
                 bool hasKeyword = m_craftingSourceKeyword && ref.HasKeyword(m_craftingSourceKeyword);
-                logger::debug("Container {:08X} '{}' - hasKeyword={}",
+                logger::trace("Container {:08X} '{}' - hasKeyword={}",
                     ref.GetFormID(),
                     baseObj->GetName() ? baseObj->GetName() : "unnamed",
                     hasKeyword);
@@ -261,14 +261,14 @@ namespace Services {
             // Check if it's a player-owned mount (horse saddlebag)
             if (IsPlayerOwnedMount(&ref)) {
                 mountRefs++;
-                logger::debug("Player-owned mount {:08X} '{}' found in cell",
+                logger::trace("Player-owned mount {:08X} '{}' found in cell",
                     ref.GetFormID(),
                     ref.GetDisplayFullName() ? ref.GetDisplayFullName() : "unnamed");
             }
 
             if (IsValidCraftingSource(&ref)) {
                 m_cachedContainers.push_back(&ref);
-                logger::debug("Found valid crafting source: {:08X}", ref.GetFormID());
+                logger::trace("Found valid crafting source: {:08X}", ref.GetFormID());
             }
             return RE::BSContainer::ForEachResult::kContinue;
         });

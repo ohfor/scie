@@ -233,6 +233,40 @@ jobs:
 
           Write-Host "Found: mods/SCIE-Babel.zip"
 
+      - name: Build SCIE-CCOR-Patch package
+        shell: pwsh
+        run: |
+          $staging = "mods/SCIE-CCOR-Patch"
+
+          if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
+          New-Item -ItemType Directory -Path $staging -Force | Out-Null
+
+          Copy-Item "patches/SCIE_CCOR_RecipesPatch.esp" $staging
+          Copy-Item "patches/SCIE_CCOR_README.md" $staging
+
+          $zipPath = "mods/SCIE-CCOR-Patch.zip"
+          if (Test-Path $zipPath) { Remove-Item $zipPath }
+          Compress-Archive -Path "$staging/*" -DestinationPath $zipPath
+
+          Write-Host "Created: $zipPath"
+
+      - name: Build SCIE-DLC-Patch package
+        shell: pwsh
+        run: |
+          $staging = "mods/SCIE-DLC-Patch"
+
+          if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
+          New-Item -ItemType Directory -Path $staging -Force | Out-Null
+
+          Copy-Item "patches/SCIE_DLC_RecipesPatch.esp" $staging
+          Copy-Item "patches/SCIE_DLC_README.md" $staging
+
+          $zipPath = "mods/SCIE-DLC-Patch.zip"
+          if (Test-Path $zipPath) { Remove-Item $zipPath }
+          Compress-Archive -Path "$staging/*" -DestinationPath $zipPath
+
+          Write-Host "Created: $zipPath"
+
       - name: Extract release notes
         id: release_notes
         shell: bash
@@ -275,6 +309,8 @@ jobs:
             mods/SCIE-Main-${{ steps.version.outputs.version }}.zip
             mods/SCIE-HomeConfigs.zip
             mods/SCIE-Babel.zip
+            mods/SCIE-CCOR-Patch.zip
+            mods/SCIE-DLC-Patch.zip
           draft: false
           prerelease: false
         env:

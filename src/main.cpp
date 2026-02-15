@@ -5,6 +5,7 @@
 #include "Services/ContainerRegistry.h"
 #include "Services/INISettings.h"
 #include "Services/TranslationService.h"
+#include "API/APIMessaging.h"
 #include "Papyrus/PapyrusInterface.h"
 
 #include <ShlObj.h>  // For SHGetKnownFolderPath, FOLDERID_Documents
@@ -311,6 +312,7 @@ namespace {
                 Services::TranslationService::GetSingleton()->Load();
                 Services::ContainerRegistry::GetSingleton()->Initialize();
                 Services::ContainerManager::GetSingleton()->Initialize();
+                API::APIMessaging::GetSingleton()->Initialize();
                 RegisterEventHandlers();
 
                 // Register Papyrus native functions

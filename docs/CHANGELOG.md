@@ -2,6 +2,19 @@
 
 All notable user-facing changes to SCIE.
 
+## [2.5.4] - 2026-02-15
+
+### Added
+- **Public API for mod authors**: New `SCIE_API` script exposes container registry and merged inventory queries to external mods. See [API.md](API.md) for full documentation.
+- **VR limitation notification**: Shows on-screen warning when a global container cannot be accessed on VR (non-persistent references)
+- **3-tier logging**: New Info/Debug/Trace log levels in MCM (replaces binary debug toggle)
+
+### Fixed
+- **VR recipe availability**: Recipes now correctly show as available when materials are in SCIE containers on VR
+- Improved stability with additional defensive checks in inventory hooks
+
+---
+
 ## [2.5.3] - 2026-02-01
 
 ### Added

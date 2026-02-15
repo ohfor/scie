@@ -667,7 +667,7 @@ namespace Services {
 
         // Check if global containers are enabled
         if (!INISettings::GetSingleton()->GetEnableGlobalContainers()) {
-            logger::debug("GetGlobalContainers: Global containers disabled in settings");
+            logger::info("GetGlobalContainers: Global containers disabled in settings");
             return result;
         }
 
@@ -675,17 +675,23 @@ namespace Services {
         std::unordered_set<RE::FormID> globalFormIDs;
 
         // INI-configured globals
+        std::size_t iniGlobalCount = 0;
         {
             std::lock_guard lock(m_globalMutex);
             globalFormIDs = m_globalContainers;
+            iniGlobalCount = m_globalContainers.size();
         }
 
         // Player-promoted globals
+        std::size_t playerGlobalCount = 0;
         {
             std::lock_guard lock(m_overridesMutex);
             for (const auto& [formID, info] : m_playerOverrides) {
                 if (info.state == ContainerState::kGlobal) {
                     globalFormIDs.insert(formID);
+                    playerGlobalCount++;
+                    logger::info("GetGlobalContainers: Player-promoted global {:08X} '{}' in '{}'",
+                        formID, info.name, info.location);
                 } else if (info.state == ContainerState::kOff) {
                     // Player disabled an INI global - remove it
                     globalFormIDs.erase(formID);
@@ -697,11 +703,25 @@ namespace Services {
             }
         }
 
+        logger::info("GetGlobalContainers: {} INI globals, {} player-promoted globals, {} total FormIDs",
+            iniGlobalCount, playerGlobalCount, globalFormIDs.size());
+
         for (RE::FormID formID : globalFormIDs) {
             // Resolve the FormID to an actual reference
             auto* form = RE::TESForm::LookupByID(formID);
             if (!form) {
-                logger::debug("Global container {:08X} not found", formID);
+                logger::warn("Global container {:08X} FormID lookup failed - reference may not be loaded", formID);
+
+                // Show on-screen notification for VR users (once per session per FormID)
+                auto& session = Hooks::g_craftingSession;
+                if (session.active && !session.notifiedFailedGlobals.contains(formID)) {
+                    session.notifiedFailedGlobals.insert(formID);
+                    auto pluginName = GetESPFilename(formID);
+                    auto localFormID = formID & ((formID >> 24) == 0xFE ? 0xFFF : 0x00FFFFFF);
+                    auto msg = std::format("SCIE - VR Limitation: Cannot access global container 0x{:X} in {}",
+                        localFormID, pluginName.empty() ? "Unknown" : pluginName);
+                    RE::DebugNotification(msg.c_str());
+                }
                 continue;
             }
 
@@ -714,21 +734,23 @@ namespace Services {
             // Verify it's actually a container
             auto* baseObj = ref->GetBaseObject();
             if (!baseObj || baseObj->GetFormType() != RE::FormType::Container) {
-                logger::warn("Global container {:08X} base object is not a container", formID);
+                logger::warn("Global container {:08X} base object is not a container (type: {})",
+                    formID, baseObj ? static_cast<int>(baseObj->GetFormType()) : -1);
                 continue;
             }
 
             // Skip locked containers
             if (ref->IsLocked()) {
-                logger::debug("Global container {:08X} skipped (locked)", formID);
+                logger::info("Global container {:08X} skipped (locked)", formID);
                 continue;
             }
 
+            auto baseName = baseObj->GetName() ? baseObj->GetName() : "Unknown";
             result.push_back(ref);
-            logger::debug("Global container {:08X} added to session", formID);
+            logger::info("Global container resolved: {:08X} '{}' - added to session", formID, baseName);
         }
 
-        logger::info("GetGlobalContainers: {} containers available", result.size());
+        logger::info("GetGlobalContainers: {} containers available for crafting", result.size());
         return result;
     }
 

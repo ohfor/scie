@@ -4,6 +4,7 @@
 #include "Services/ContainerUtils.h"
 #include "Services/INISettings.h"
 #include "Services/TranslationService.h"
+#include "Services/APIService.h"
 
 namespace Papyrus {
     namespace {
@@ -242,12 +243,25 @@ namespace Papyrus {
             settings->Save();
         }
 
-        /// Get whether debug logging is enabled
+        /// Get the current log level (0=Info, 1=Debug, 2=Trace)
+        std::int32_t GetLogLevel(RE::StaticFunctionTag*) {
+            return static_cast<std::int32_t>(Services::INISettings::GetSingleton()->GetLogLevel());
+        }
+
+        /// Set the log level and save to INI
+        void SetLogLevel(RE::StaticFunctionTag*, std::int32_t a_level) {
+            if (a_level < 0 || a_level > 2) return;
+            auto* settings = Services::INISettings::GetSingleton();
+            settings->SetLogLevel(static_cast<Services::LogLevel>(a_level));
+            settings->Save();
+        }
+
+        /// Backward compat: Get whether debug logging is enabled (level >= Debug)
         bool GetDebugLogging(RE::StaticFunctionTag*) {
             return Services::INISettings::GetSingleton()->GetDebugLogging();
         }
 
-        /// Set whether debug logging is enabled and save to INI
+        /// Backward compat: Set debug logging (true=Debug, false=Info)
         void SetDebugLogging(RE::StaticFunctionTag*, bool a_enabled) {
             auto* settings = Services::INISettings::GetSingleton();
             settings->SetDebugLogging(a_enabled);
@@ -562,6 +576,68 @@ namespace Papyrus {
         }
 
         // =====================================================================
+        // Public API Functions (SCIE_API script)
+        // =====================================================================
+
+        constexpr std::string_view APIScriptName = "SCIE_API"sv;
+
+        /// Get all registered containers
+        std::vector<RE::TESObjectREFR*> API_GetRegisteredContainers(RE::StaticFunctionTag*) {
+            return Services::APIService::GetSingleton()->GetRegisteredContainers();
+        }
+
+        /// Get container state (0=off, 1=local, 2=global)
+        std::int32_t API_GetContainerState(RE::StaticFunctionTag*, RE::TESObjectREFR* a_container) {
+            if (!a_container) return 0;
+            return Services::ContainerRegistry::GetSingleton()->GetContainerState(a_container->GetFormID());
+        }
+
+        /// Get combined item count from player + all containers
+        std::int32_t API_GetCombinedItemCount(RE::StaticFunctionTag*, RE::TESForm* a_item, std::int32_t a_stationType) {
+            if (!a_item) return 0;
+            auto* boundObj = a_item->As<RE::TESBoundObject>();
+            if (!boundObj) return 0;
+            return Services::APIService::GetSingleton()->GetCombinedItemCount(boundObj, a_stationType);
+        }
+
+        /// Get all available items from merged inventory
+        std::vector<RE::TESForm*> API_GetAvailableItems(RE::StaticFunctionTag*, std::int32_t a_stationType) {
+            std::vector<RE::TESBoundObject*> items;
+            std::vector<std::int32_t> counts;
+            Services::APIService::GetSingleton()->GetAvailableItems(a_stationType, items, counts);
+
+            std::vector<RE::TESForm*> result;
+            result.reserve(items.size());
+            for (auto* item : items) {
+                result.push_back(item);
+            }
+            return result;
+        }
+
+        /// Get counts for available items (parallel array)
+        std::vector<std::int32_t> API_GetAvailableItemCounts(RE::StaticFunctionTag*, std::int32_t a_stationType) {
+            std::vector<RE::TESBoundObject*> items;
+            std::vector<std::int32_t> counts;
+            Services::APIService::GetSingleton()->GetAvailableItems(a_stationType, items, counts);
+            return counts;
+        }
+
+        /// Force refresh of inventory cache
+        void API_RefreshInventoryCache(RE::StaticFunctionTag*) {
+            Services::APIService::GetSingleton()->RefreshCache();
+        }
+
+        /// Check if crafting session is active
+        bool API_IsSessionActive(RE::StaticFunctionTag*) {
+            return Services::APIService::GetSingleton()->IsSessionActive();
+        }
+
+        /// Get API version (major * 100 + minor)
+        std::int32_t API_GetAPIVersion(RE::StaticFunctionTag*) {
+            return Services::APIService::GetAPIVersion();
+        }
+
+        // =====================================================================
         // Translation functions
         // =====================================================================
 
@@ -618,8 +694,10 @@ namespace Papyrus {
         a_vm->RegisterFunction("SetMaxDistance", ScriptName, SetMaxDistance);
         a_vm->RegisterFunction("GetModEnabled", ScriptName, GetModEnabled);
         a_vm->RegisterFunction("SetModEnabled", ScriptName, SetModEnabled);
-        a_vm->RegisterFunction("GetDebugLogging", ScriptName, GetDebugLogging);
-        a_vm->RegisterFunction("SetDebugLogging", ScriptName, SetDebugLogging);
+        a_vm->RegisterFunction("GetLogLevel", ScriptName, GetLogLevel);
+        a_vm->RegisterFunction("SetLogLevel", ScriptName, SetLogLevel);
+        a_vm->RegisterFunction("GetDebugLogging", ScriptName, GetDebugLogging);  // compat
+        a_vm->RegisterFunction("SetDebugLogging", ScriptName, SetDebugLogging);  // compat
         a_vm->RegisterFunction("GetEnableGlobalContainers", ScriptName, GetEnableGlobalContainers);
         a_vm->RegisterFunction("SetEnableGlobalContainers", ScriptName, SetEnableGlobalContainers);
         a_vm->RegisterFunction("GetEnableINIContainers", ScriptName, GetEnableINIContainers);
@@ -665,6 +743,21 @@ namespace Papyrus {
         a_vm->RegisterFunction("ResetFilteringToDefaults", ScriptName, ResetFilteringToDefaults);
 
         logger::info("Registered Papyrus native functions for {}", ScriptName);
+
+        // =====================================================================
+        // Public API Functions (SCIE_API script)
+        // =====================================================================
+        a_vm->RegisterFunction("GetRegisteredContainers", APIScriptName, API_GetRegisteredContainers);
+        a_vm->RegisterFunction("GetContainerState", APIScriptName, API_GetContainerState);
+        a_vm->RegisterFunction("GetCombinedItemCount", APIScriptName, API_GetCombinedItemCount);
+        a_vm->RegisterFunction("GetAvailableItems", APIScriptName, API_GetAvailableItems);
+        a_vm->RegisterFunction("GetAvailableItemCounts", APIScriptName, API_GetAvailableItemCounts);
+        a_vm->RegisterFunction("RefreshInventoryCache", APIScriptName, API_RefreshInventoryCache);
+        a_vm->RegisterFunction("IsSessionActive", APIScriptName, API_IsSessionActive);
+        a_vm->RegisterFunction("GetAPIVersion", APIScriptName, API_GetAPIVersion);
+
+        logger::info("Registered Papyrus native functions for {}", APIScriptName);
+
         return true;
     }
 }

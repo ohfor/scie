@@ -147,11 +147,22 @@ bool Function GetModEnabled() Global Native
 ; Set whether the mod is enabled and save to INI
 Function SetModEnabled(bool abEnabled) Global Native
 
-; Get whether debug logging is enabled (INI: bDebugLogging)
-; When true, verbose logging is written to SKSE log
+; Log level constants (for aiLevel parameter):
+;   0 = Info (normal operation: startup, session start/end, errors)
+;   1 = Debug (troubleshooting: station detection, container resolution, summaries)
+;   2 = Trace (extreme detail: every item query, per-hook entry - very spammy!)
+
+; Get the current log level (0=Info, 1=Debug, 2=Trace)
+int Function GetLogLevel() Global Native
+
+; Set the log level and save to INI
+; aiLevel: 0=Info, 1=Debug, 2=Trace
+Function SetLogLevel(int aiLevel) Global Native
+
+; BACKWARD COMPAT: Get whether debug logging is enabled (returns true if level >= Debug)
 bool Function GetDebugLogging() Global Native
 
-; Set debug logging and save to INI
+; BACKWARD COMPAT: Set debug logging (true sets Debug level, false sets Info level)
 Function SetDebugLogging(bool abEnabled) Global Native
 
 ; Get count of active crafting containers in current cell within max distance

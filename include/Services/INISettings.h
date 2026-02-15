@@ -15,6 +15,13 @@ namespace Services {
         Unknown         // Unrecognized station - no filtering applied (allow all)
     };
 
+    /// Log verbosity levels
+    enum class LogLevel : std::int32_t {
+        Info = 0,   // Operational logging: startup, session start/end, errors, warnings
+        Debug = 1,  // Troubleshooting: station detection, container resolution, cache summaries
+        Trace = 2   // Extreme detail: every GetInventoryItemCount call, per-item iteration
+    };
+
     /// Form types that can be filtered for container pulls
     /// Order matches INI key order and MCM display order
     enum class FilterableFormType : std::uint32_t {
@@ -65,9 +72,13 @@ namespace Services {
         void SetAllowUnsafeContainers(bool a_value);
 
         // Debug settings - Getters
-        bool GetDebugLogging() const { return m_debugLogging; }
+        LogLevel GetLogLevel() const { return m_logLevel; }
+        /// Backward compat: returns true if log level >= Debug
+        bool GetDebugLogging() const { return m_logLevel >= LogLevel::Debug; }
 
         // Debug settings - Setters (called from MCM via Papyrus)
+        void SetLogLevel(LogLevel a_level);
+        /// Backward compat: sets level to Debug if true, Info if false
         void SetDebugLogging(bool a_value);
 
         // Filtering settings - check if a form type should be pulled from containers
@@ -128,7 +139,7 @@ namespace Services {
         bool m_allowUnsafeContainers = false;   // Allow toggling containers with respawn flag
 
         // Debug settings
-        bool m_debugLogging = false;
+        LogLevel m_logLevel = LogLevel::Info;
 
         // Filtering settings - 4 station types x 12 form types = 48 booleans
         // Indexed as m_filterSettings[stationType][formType]
