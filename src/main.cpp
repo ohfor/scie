@@ -5,6 +5,7 @@
 #include "Services/ContainerRegistry.h"
 #include "Services/INISettings.h"
 #include "Services/TranslationService.h"
+#include "Services/SLIDIntegration.h"
 #include "API/APIMessaging.h"
 #include "Papyrus/PapyrusInterface.h"
 
@@ -313,6 +314,7 @@ namespace {
                 Services::ContainerRegistry::GetSingleton()->Initialize();
                 Services::ContainerManager::GetSingleton()->Initialize();
                 API::APIMessaging::GetSingleton()->Initialize();
+                Services::SLIDIntegration::GetSingleton()->Initialize();
                 RegisterEventHandlers();
 
                 // Register Papyrus native functions
@@ -329,6 +331,13 @@ namespace {
                 GrantPowersToPlayer();
                 break;
         }
+    }
+
+    void APIMessageHandler(SKSE::MessagingInterface::Message* a_msg) {
+        // Route inter-plugin messages to API handler
+        API::APIMessaging::GetSingleton()->HandleMessage(a_msg);
+        // Also route to SLID integration for SLID responses
+        Services::SLIDIntegration::GetSingleton()->HandleMessage(a_msg);
     }
 }
 
@@ -353,6 +362,12 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
     auto messaging = SKSE::GetMessagingInterface();
     if (!messaging->RegisterListener(MessageHandler)) {
         logger::error("Failed to register messaging listener");
+        return false;
+    }
+
+    // Register for inter-plugin API messages (nullptr = listen to all plugins)
+    if (!messaging->RegisterListener(nullptr, APIMessageHandler)) {
+        logger::error("Failed to register API messaging listener");
         return false;
     }
 

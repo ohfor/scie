@@ -87,6 +87,46 @@ namespace Services {
             }
         }
 
+        // Check for Khajiit Will Follow compatibility
+        // KWF has 4 followers with fixed storage container REFRs
+        if (dataHandler && dataHandler->LookupModByName("KhajiitWillFollow.esp")) {
+            // FormID mappings (local FormIDs from the ESP):
+            // Bikhai (0x000D62) -> Storage (0x8AB797)
+            // Ma'kara (0x3E1913) -> Storage (0x8AB798)
+            // Nanak (0x00285B) -> Storage (0x8AB799)
+            // S'ariq (0x01ED08) -> Storage (0x8AB79A)
+            struct KWFMapping {
+                std::uint32_t followerLocalID;
+                std::uint32_t storageLocalID;
+                const char* name;
+            };
+            constexpr KWFMapping mappings[] = {
+                {0x000D62, 0x8AB797, "Bikhai"},
+                {0x3E1913, 0x8AB798, "Ma'kara"},
+                {0x00285B, 0x8AB799, "Nanak"},
+                {0x01ED08, 0x8AB79A, "S'ariq"}
+            };
+
+            int foundCount = 0;
+            for (const auto& mapping : mappings) {
+                auto* follower = dataHandler->LookupForm(mapping.followerLocalID, "KhajiitWillFollow.esp");
+                auto* storage = dataHandler->LookupForm(mapping.storageLocalID, "KhajiitWillFollow.esp");
+                if (follower && storage) {
+                    m_kwfFollowerToStorage[follower->GetFormID()] = storage->GetFormID();
+                    logger::debug("KWF: mapped {} ({:08X}) -> storage {:08X}",
+                        mapping.name, follower->GetFormID(), storage->GetFormID());
+                    foundCount++;
+                }
+            }
+
+            if (foundCount > 0) {
+                m_kwfInstalled = true;
+                logger::info("Found Khajiit Will Follow - {} follower storage mappings registered", foundCount);
+            } else {
+                logger::warn("KhajiitWillFollow.esp loaded but no follower/storage forms found");
+            }
+        }
+
         logger::info("ContainerManager initialized");
     }
 
@@ -464,5 +504,35 @@ namespace Services {
         logger::debug("NFF: no container ref for follower {:08X} (follower slot {}, container alias {})",
             a_follower->GetFormID(), foundSlot, containerAliasID);
         return nullptr;
+    }
+
+    RE::TESObjectREFR* ContainerManager::GetKWFStorageContainer(RE::Actor* a_follower) {
+        if (!a_follower || !m_kwfInstalled) return nullptr;
+
+        // KWF followers need to be in the current follower faction to be "active"
+        if (!m_currentFollowerFaction || !a_follower->IsInFaction(m_currentFollowerFaction)) {
+            return nullptr;
+        }
+
+        // Get the follower's base form ID for lookup
+        auto* baseForm = a_follower->GetActorBase();
+        if (!baseForm) return nullptr;
+
+        RE::FormID baseFormID = baseForm->GetFormID();
+
+        // Check if this follower has a KWF storage mapping
+        auto it = m_kwfFollowerToStorage.find(baseFormID);
+        if (it == m_kwfFollowerToStorage.end()) {
+            return nullptr;
+        }
+
+        // Look up the storage container REFR
+        auto* containerRef = RE::TESForm::LookupByID<RE::TESObjectREFR>(it->second);
+        if (containerRef) {
+            logger::debug("KWF: found storage {:08X} for follower {:08X} '{}'",
+                containerRef->GetFormID(), a_follower->GetFormID(),
+                a_follower->GetDisplayFullName() ? a_follower->GetDisplayFullName() : "unnamed");
+        }
+        return containerRef;
     }
 }

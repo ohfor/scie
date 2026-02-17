@@ -299,6 +299,10 @@ bool Function IsHipBagInstalled() Global Native
 ; When detected, SCIE includes NFF "Additional Inventory" containers at crafting stations.
 bool Function IsNFFInstalled() Global Native
 
+; Check if Khajiit Will Follow is installed (KhajiitWillFollow.esp)
+; When detected, SCIE includes KWF follower storage containers at crafting stations.
+bool Function IsKWFInstalled() Global Native
+
 ; Check if Essential Favorites SKSE plugin is loaded (po3_EssentialFavorites.dll)
 ; SCIE respects favorited items regardless, but shows detection status in MCM.
 bool Function IsEssentialFavoritesInstalled() Global Native
@@ -311,6 +315,45 @@ bool Function IsFavoriteMiscItemsInstalled() Global Native
 ; This reflects the player's favorited items that SCIE is respecting.
 ; Only meaningful during an active crafting session; returns 0 otherwise.
 int Function GetFavoritedItemsExcludedCount() Global Native
+
+; =============================================================================
+; SLID INTEGRATION
+; Functions for integrating with SLID (Skyrim Linked Item Distribution)
+; =============================================================================
+
+; Check if SLID is installed (SLID.dll present)
+bool Function IsSLIDInstalled() Global Native
+
+; Request SLID to send updated network list
+; Results are cached and available via GetSLIDNetworkCount/GetSLIDNetworkName
+Function RefreshSLIDNetworks() Global Native
+
+; Get count of available SLID networks
+int Function GetSLIDNetworkCount() Global Native
+
+; Get SLID network name by index (0-based)
+string Function GetSLIDNetworkName(int aiIndex) Global Native
+
+; Check if a SLID network is enabled for crafting
+bool Function IsSLIDNetworkEnabled(string asNetworkName) Global Native
+
+; Enable/disable a SLID network for crafting
+; When enabled, containers in that network are included as crafting sources
+Function SetSLIDNetworkEnabled(string asNetworkName, bool abEnabled) Global Native
+
+; Get count of enabled SLID networks
+int Function GetSLIDEnabledNetworkCount() Global Native
+
+; Get count of missing SLID networks (enabled but no longer exist in SLID)
+int Function GetSLIDMissingNetworkCount() Global Native
+
+; Get missing SLID network name by index (0-based)
+; Use with GetSLIDMissingNetworkCount to iterate missing networks
+string Function GetSLIDMissingNetworkName(int aiIndex) Global Native
+
+; Remove a SLID network from the enabled set
+; Use this to clean up missing networks that no longer exist in SLID
+Function RemoveSLIDNetwork(string asNetworkName) Global Native
 
 ; =============================================================================
 ; FILTERING SETTINGS (for MCM Filtering tab)

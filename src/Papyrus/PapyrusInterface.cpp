@@ -5,6 +5,7 @@
 #include "Services/INISettings.h"
 #include "Services/TranslationService.h"
 #include "Services/APIService.h"
+#include "Services/SLIDIntegration.h"
 
 namespace Papyrus {
     namespace {
@@ -349,6 +350,11 @@ namespace Papyrus {
             return Services::ContainerRegistry::IsNFFInstalled();
         }
 
+        /// Check if Khajiit Will Follow is installed
+        bool IsKWFInstalled(RE::StaticFunctionTag*) {
+            return Services::ContainerRegistry::IsKWFInstalled();
+        }
+
         /// Check if Essential Favorites SKSE plugin is loaded
         bool IsEssentialFavoritesInstalled(RE::StaticFunctionTag*) {
             return Services::ContainerRegistry::IsEssentialFavoritesInstalled();
@@ -363,6 +369,75 @@ namespace Papyrus {
         std::int32_t GetFavoritedItemsExcludedCount(RE::StaticFunctionTag*) {
             return static_cast<std::int32_t>(Services::ContainerRegistry::GetFavoritedItemsExcludedCount());
         }
+
+        // ========== SLID Integration ==========
+
+        /// Check if SLID is installed
+        bool IsSLIDInstalled(RE::StaticFunctionTag*) {
+            return Services::SLIDIntegration::GetSingleton()->IsSLIDInstalled();
+        }
+
+        /// Request SLID to send us updated network list
+        void RefreshSLIDNetworks(RE::StaticFunctionTag*) {
+            Services::SLIDIntegration::GetSingleton()->RequestNetworkList();
+        }
+
+        /// Get count of available SLID networks
+        std::int32_t GetSLIDNetworkCount(RE::StaticFunctionTag*) {
+            return static_cast<std::int32_t>(
+                Services::SLIDIntegration::GetSingleton()->GetNetworkNames().size());
+        }
+
+        /// Get SLID network name by index
+        RE::BSFixedString GetSLIDNetworkName(RE::StaticFunctionTag*, std::int32_t a_index) {
+            auto names = Services::SLIDIntegration::GetSingleton()->GetNetworkNames();
+            if (a_index >= 0 && a_index < static_cast<std::int32_t>(names.size())) {
+                return RE::BSFixedString(names[a_index]);
+            }
+            return "";
+        }
+
+        /// Check if a SLID network is enabled
+        bool IsSLIDNetworkEnabled(RE::StaticFunctionTag*, RE::BSFixedString a_networkName) {
+            return Services::SLIDIntegration::GetSingleton()->IsNetworkEnabled(a_networkName.c_str());
+        }
+
+        /// Enable/disable a SLID network
+        void SetSLIDNetworkEnabled(RE::StaticFunctionTag*, RE::BSFixedString a_networkName, bool a_enabled) {
+            Services::SLIDIntegration::GetSingleton()->SetNetworkEnabled(a_networkName.c_str(), a_enabled);
+            // Request updated containers for this network if enabling
+            if (a_enabled) {
+                Services::SLIDIntegration::GetSingleton()->RequestNetworkContainers(a_networkName.c_str());
+            }
+        }
+
+        /// Get count of enabled SLID networks
+        std::int32_t GetSLIDEnabledNetworkCount(RE::StaticFunctionTag*) {
+            return static_cast<std::int32_t>(
+                Services::SLIDIntegration::GetSingleton()->GetEnabledNetworks().size());
+        }
+
+        /// Get count of missing SLID networks (enabled but no longer exist)
+        std::int32_t GetSLIDMissingNetworkCount(RE::StaticFunctionTag*) {
+            return static_cast<std::int32_t>(
+                Services::SLIDIntegration::GetSingleton()->GetMissingNetworks().size());
+        }
+
+        /// Get missing SLID network name by index
+        RE::BSFixedString GetSLIDMissingNetworkName(RE::StaticFunctionTag*, std::int32_t a_index) {
+            auto missing = Services::SLIDIntegration::GetSingleton()->GetMissingNetworks();
+            if (a_index >= 0 && a_index < static_cast<std::int32_t>(missing.size())) {
+                return RE::BSFixedString(missing[a_index]);
+            }
+            return "";
+        }
+
+        /// Remove a SLID network from enabled set (for cleaning up missing networks)
+        void RemoveSLIDNetwork(RE::StaticFunctionTag*, RE::BSFixedString a_networkName) {
+            Services::SLIDIntegration::GetSingleton()->RemoveNetwork(a_networkName.c_str());
+        }
+
+        // ========== End SLID Integration ==========
 
         /// Get count of configured global containers (from INI files)
         std::int32_t GetGlobalContainerCount(RE::StaticFunctionTag*) {
@@ -712,9 +787,23 @@ namespace Papyrus {
         a_vm->RegisterFunction("IsConvenientHorsesInstalled", ScriptName, IsConvenientHorsesInstalled);
         a_vm->RegisterFunction("IsHipBagInstalled", ScriptName, IsHipBagInstalled);
         a_vm->RegisterFunction("IsNFFInstalled", ScriptName, IsNFFInstalled);
+        a_vm->RegisterFunction("IsKWFInstalled", ScriptName, IsKWFInstalled);
         a_vm->RegisterFunction("IsEssentialFavoritesInstalled", ScriptName, IsEssentialFavoritesInstalled);
         a_vm->RegisterFunction("IsFavoriteMiscItemsInstalled", ScriptName, IsFavoriteMiscItemsInstalled);
         a_vm->RegisterFunction("GetFavoritedItemsExcludedCount", ScriptName, GetFavoritedItemsExcludedCount);
+
+        // SLID Integration
+        a_vm->RegisterFunction("IsSLIDInstalled", ScriptName, IsSLIDInstalled);
+        a_vm->RegisterFunction("RefreshSLIDNetworks", ScriptName, RefreshSLIDNetworks);
+        a_vm->RegisterFunction("GetSLIDNetworkCount", ScriptName, GetSLIDNetworkCount);
+        a_vm->RegisterFunction("GetSLIDNetworkName", ScriptName, GetSLIDNetworkName);
+        a_vm->RegisterFunction("IsSLIDNetworkEnabled", ScriptName, IsSLIDNetworkEnabled);
+        a_vm->RegisterFunction("SetSLIDNetworkEnabled", ScriptName, SetSLIDNetworkEnabled);
+        a_vm->RegisterFunction("GetSLIDEnabledNetworkCount", ScriptName, GetSLIDEnabledNetworkCount);
+        a_vm->RegisterFunction("GetSLIDMissingNetworkCount", ScriptName, GetSLIDMissingNetworkCount);
+        a_vm->RegisterFunction("GetSLIDMissingNetworkName", ScriptName, GetSLIDMissingNetworkName);
+        a_vm->RegisterFunction("RemoveSLIDNetwork", ScriptName, RemoveSLIDNetwork);
+
         a_vm->RegisterFunction("GetGlobalContainerCount", ScriptName, GetGlobalContainerCount);
         a_vm->RegisterFunction("GetTrackedContainerCount", ScriptName, GetTrackedContainerCount);
 

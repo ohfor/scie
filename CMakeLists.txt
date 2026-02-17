@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.21)
 # ---- Versioning ----
 set(VERSION_MAJOR 2)
 set(VERSION_MINOR 5)
-set(VERSION_PATCH 4)
+set(VERSION_PATCH 5)
 
 # ---- Project ----
 project(
@@ -62,6 +62,7 @@ set(SOURCES
     src/Services/ContainerRegistry.cpp
     src/Services/INISettings.cpp
     src/Services/SourceScanner.cpp
+    src/Services/SLIDIntegration.cpp
     src/Services/APIService.cpp
     src/Services/TranslationService.cpp
     src/API/APIMessaging.cpp
@@ -77,6 +78,7 @@ set(HEADERS
     include/Services/ContainerRegistry.h
     include/Services/INISettings.h
     include/Services/SourceScanner.h
+    include/Services/SLIDIntegration.h
     include/Services/APIService.h
     include/Services/TranslationService.h
     include/API/APIMessaging.h

@@ -2,6 +2,25 @@
 
 All notable user-facing changes to SCIE.
 
+## [Unreleased]
+
+---
+
+## [2.5.5] - 2026-02-17
+
+### Added
+- **Khajiit Will Follow support**: KWF follower storage containers now contribute materials (same safety filter as NFF)
+- **SLID integration**: Skyrim Linked Item Distribution can query SCIE containers via SKSE messaging API
+
+### Changed
+- **Split DLC/CC recipe patches**: `SCIE_DLC_RecipesPatch.esp` (Dawnguard + Hearthfire) and `SCIE_CC_ForgottenSeasons_RecipesPatch.esp` (Creation Club) are now separate files for cleaner load order management
+- **BREAKING (native plugins only)**: `InventoryResponse.sessionActive` (bool) replaced with `activeStationType` (int32_t: -1 = no session, 0-3 = station type)
+
+### Fixed
+- **SKSE messaging API**: Now dispatches responses correctly (was stub). Native plugins can query containers via SKSE messaging.
+
+---
+
 ## [2.5.4] - 2026-02-15
 
 ### Added

@@ -267,6 +267,23 @@ jobs:
 
           Write-Host "Created: $zipPath"
 
+      - name: Build SCIE-CC-ForgottenSeasons-Patch package
+        shell: pwsh
+        run: |
+          $staging = "mods/SCIE-CC-ForgottenSeasons-Patch"
+
+          if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
+          New-Item -ItemType Directory -Path $staging -Force | Out-Null
+
+          Copy-Item "patches/SCIE_CC_ForgottenSeasons_RecipesPatch.esp" $staging
+          Copy-Item "patches/SCIE_CC_ForgottenSeasons_README.md" $staging
+
+          $zipPath = "mods/SCIE-CC-ForgottenSeasons-Patch.zip"
+          if (Test-Path $zipPath) { Remove-Item $zipPath }
+          Compress-Archive -Path "$staging/*" -DestinationPath $zipPath
+
+          Write-Host "Created: $zipPath"
+
       - name: Extract release notes
         id: release_notes
         shell: bash
@@ -311,6 +328,7 @@ jobs:
             mods/SCIE-Babel.zip
             mods/SCIE-CCOR-Patch.zip
             mods/SCIE-DLC-Patch.zip
+            mods/SCIE-CC-ForgottenSeasons-Patch.zip
           draft: false
           prerelease: false
         env:

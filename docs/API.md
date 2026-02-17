@@ -330,8 +330,8 @@ struct InventoryRequest {
 
 // Inventory response
 struct InventoryResponse {
-    std::int32_t itemCount;  // Number of unique item types
-    bool sessionActive;      // Whether crafting session is active
+    std::int32_t itemCount;         // Number of unique item types
+    std::int32_t activeStationType; // -1 = no session, 0-3 = station type
 };
 ```
 

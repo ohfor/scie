@@ -135,6 +135,9 @@ namespace Services {
         /// Check if Nether's Follower Framework is installed (for compatibility info)
         static bool IsNFFInstalled();
 
+        /// Check if Khajiit Will Follow is installed (for compatibility info)
+        static bool IsKWFInstalled();
+
         /// Check if Essential Favorites SKSE plugin is loaded
         static bool IsEssentialFavoritesInstalled();
 

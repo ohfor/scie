@@ -2,6 +2,7 @@
 #include "Services/ContainerUtils.h"
 #include "Services/INISettings.h"
 #include "Services/TranslationService.h"
+#include "Services/SLIDIntegration.h"
 #include "Hooks/CraftingSession.h"
 
 namespace Services {
@@ -1013,6 +1014,13 @@ namespace Services {
         return dataHandler->LookupModByName("nwsFollowerFramework.esp") != nullptr;
     }
 
+    bool ContainerRegistry::IsKWFInstalled() {
+        auto* dataHandler = RE::TESDataHandler::GetSingleton();
+        if (!dataHandler) return false;
+
+        return dataHandler->LookupModByName("KhajiitWillFollow.esp") != nullptr;
+    }
+
     bool ContainerRegistry::IsEssentialFavoritesInstalled() {
         // Check for the SKSE plugin DLL
         auto pluginPath = std::filesystem::path("Data/SKSE/Plugins/po3_EssentialFavorites.dll");
@@ -1290,6 +1298,11 @@ namespace Services {
 
     void ContainerRegistry::OnGameSaved(SKSE::SerializationInterface* a_intfc) {
         GetSingleton()->SaveToCoSave(a_intfc);
+
+        // Also save SLID integration data
+        if (a_intfc->OpenRecord('SLID', 1)) {
+            SLIDIntegration::GetSingleton()->SaveToCoSave(a_intfc);
+        }
     }
 
     void ContainerRegistry::OnGameLoaded(SKSE::SerializationInterface* a_intfc) {
@@ -1298,15 +1311,23 @@ namespace Services {
         while (a_intfc->GetNextRecordInfo(type, version, length)) {
             if (type == kCosaveID) {
                 GetSingleton()->LoadFromCoSave(a_intfc, version);
+            } else if (type == 'SLID') {
+                SLIDIntegration::GetSingleton()->LoadFromCoSave(a_intfc, version);
             }
         }
 
         // Backfill metadata for migrated/loaded overrides (name, location, ESP fallback)
         GetSingleton()->BackfillOverrideMetadata();
+
+        // Refresh SLID containers for enabled networks
+        if (SLIDIntegration::GetSingleton()->IsSLIDInstalled()) {
+            SLIDIntegration::GetSingleton()->Refresh();
+        }
     }
 
     void ContainerRegistry::OnRevert(SKSE::SerializationInterface* a_intfc) {
         GetSingleton()->Revert(a_intfc);
+        SLIDIntegration::GetSingleton()->Revert();
     }
 
     void ContainerRegistry::SaveToCoSave(SKSE::SerializationInterface* a_intfc) {

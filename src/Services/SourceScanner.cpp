@@ -2,6 +2,7 @@
 #include "Services/ContainerManager.h"
 #include "Services/ContainerRegistry.h"
 #include "Services/INISettings.h"
+#include "Services/SLIDIntegration.h"
 
 #include <chrono>
 #include <map>
@@ -148,6 +149,47 @@ namespace Services {
             }
         }
 
+        // Add SLID network containers (if SLID installed and networks enabled)
+        auto* slidIntegration = SLIDIntegration::GetSingleton();
+        if (slidIntegration->IsSLIDInstalled()) {
+            auto t6slid = std::chrono::high_resolution_clock::now();
+            auto slidContainers = slidIntegration->GetEnabledNetworkContainerRefs();
+
+            for (auto* container : slidContainers) {
+                if (!container) continue;
+
+                // Skip if already added
+                if (isAlreadyInSources(container->GetFormID())) {
+                    auto baseName = container->GetBaseObject() ? container->GetBaseObject()->GetName() : "Unknown";
+                    logger::debug("SLID container {} ({:08X}) already in sources, skipping",
+                        baseName, static_cast<std::uint32_t>(container->GetFormID()));
+                    continue;
+                }
+
+                std::int32_t count = originalGetContainerItemCount(container, false, true);
+                if (count > 0) {
+                    result.sources.push_back({
+                        container->CreateRefHandle(),
+                        count,
+                        currentIndex
+                    });
+
+                    auto baseName = container->GetBaseObject() ? container->GetBaseObject()->GetName() : "Unknown";
+                    logger::info("Scan source (SLID): {} ({:08X}) - {} items at index {}",
+                        baseName, static_cast<std::uint32_t>(container->GetFormID()), count, currentIndex);
+
+                    currentIndex += count;
+                }
+            }
+
+            auto t6slidEnd = std::chrono::high_resolution_clock::now();
+            if (!slidContainers.empty()) {
+                logger::debug("[PERF] SLID containers took {:.2f}ms ({} containers)",
+                    std::chrono::duration<double, std::milli>(t6slidEnd - t6slid).count(),
+                    static_cast<int>(slidContainers.size()));
+            }
+        }
+
         // Add nearby followers/spouses as sources
         if (config.includeFollowers && settings->GetEnableFollowerInventory()) {
             auto t6d = std::chrono::high_resolution_clock::now();
@@ -193,6 +235,26 @@ namespace Services {
                                     nffDisplayName, static_cast<std::uint32_t>(nffContainer->GetFormID()), nffCount, currentIndex);
 
                                 currentIndex += nffCount;
+                            }
+                        }
+
+                        // Check for KWF storage container
+                        auto* kwfContainer = containerMgr->GetKWFStorageContainer(followerActor);
+                        if (kwfContainer && !isAlreadyInSources(kwfContainer->GetFormID())) {
+                            std::int32_t kwfCount = originalGetContainerItemCount(kwfContainer, false, true);
+                            if (kwfCount > 0) {
+                                result.sources.push_back({
+                                    kwfContainer->CreateRefHandle(),
+                                    kwfCount,
+                                    currentIndex,
+                                    true  // isFollower - same safety filter
+                                });
+
+                                auto kwfDisplayName = follower->GetDisplayFullName() ? follower->GetDisplayFullName() : "Unknown";
+                                logger::info("Scan source (KWF STORAGE): {}'s storage ({:08X}) - {} items at index {}",
+                                    kwfDisplayName, static_cast<std::uint32_t>(kwfContainer->GetFormID()), kwfCount, currentIndex);
+
+                                currentIndex += kwfCount;
                             }
                         }
                     }
@@ -334,6 +396,13 @@ namespace Services {
                         if (nffContainer && !addedFormIDs.contains(nffContainer->GetFormID())) {
                             refs.push_back(nffContainer);
                             addedFormIDs.insert(nffContainer->GetFormID());
+                        }
+
+                        // Check for KWF storage container
+                        auto* kwfContainer = containerMgr->GetKWFStorageContainer(followerActor);
+                        if (kwfContainer && !addedFormIDs.contains(kwfContainer->GetFormID())) {
+                            refs.push_back(kwfContainer);
+                            addedFormIDs.insert(kwfContainer->GetFormID());
                         }
                     }
                 }

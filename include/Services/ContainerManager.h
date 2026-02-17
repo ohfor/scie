@@ -66,6 +66,9 @@ namespace Services {
         /// Get NFF Additional Inventory container for a follower (nullptr if none)
         RE::TESObjectREFR* GetNFFAdditionalInventory(RE::Actor* a_follower);
 
+        /// Get KWF storage container for a Khajiit Will Follow follower (nullptr if none)
+        RE::TESObjectREFR* GetKWFStorageContainer(RE::Actor* a_follower);
+
     private:
 
         RE::BGSKeyword* m_craftingSourceKeyword = nullptr;
@@ -73,6 +76,8 @@ namespace Services {
         RE::TESFaction* m_chHorseFaction = nullptr;   // Convenient Horses compatibility
         RE::TESFaction* m_nffXStoreFaction = nullptr;  // NFF nwsFF_xStoreFac
         RE::TESQuest* m_nffXStorageQuest = nullptr;    // NFF nwsFollowerXStorage
+        bool m_kwfInstalled = false;                   // Khajiit Will Follow detected
+        std::unordered_map<RE::FormID, RE::FormID> m_kwfFollowerToStorage;  // Follower base → storage REFR
         RE::TESFaction* m_currentFollowerFaction = nullptr;
         RE::TESFaction* m_playerMarriedFaction = nullptr;
         RE::BGSKeyword* m_craftingCookpotKeyword = nullptr;

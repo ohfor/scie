@@ -37,8 +37,8 @@ namespace API {
 
     /// Response structure for inventory query
     struct InventoryResponse {
-        std::int32_t itemCount;     // Number of unique items
-        bool sessionActive;         // Whether crafting session is active
+        std::int32_t itemCount;         // Number of unique items
+        std::int32_t activeStationType; // -1 = no session, 0-3 = station type
     };
 
     /// SCIE API message handler

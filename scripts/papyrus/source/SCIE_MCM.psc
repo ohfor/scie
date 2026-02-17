@@ -106,13 +106,21 @@ string[] formTypeInfoTexts
 ; Station names for filtering dropdown
 string[] stationNames
 
+; SLID Integration
+int[] oidSLIDNetworkToggles      ; Array of toggle option IDs for SLID networks
+string[] slidNetworkNames         ; Cached network names for toggle handling
+int slidNetworkCount = 0          ; Number of networks currently displayed
+int[] oidSLIDMissingRemove       ; Array of remove button OIDs for missing networks
+string[] slidMissingNames        ; Cached missing network names
+int slidMissingCount = 0         ; Number of missing networks displayed
+
 ; =============================================================================
 ; MCM Setup
 ; =============================================================================
 
 Event OnConfigInit()
     ModName = "SCIE"
-    CurrentVersion = 254  ; v2.5.4: Public API for mod authors
+    CurrentVersion = 255  ; v2.5.5: KWF support, SLID integration, split patches
     InitializePages()
     InitializeFilteringArrays()
 EndEvent
@@ -136,6 +144,12 @@ EndFunction
 
 Function InitializeFilteringArrays()
     oidFilterToggles = new int[12]
+
+    ; SLID network arrays (max 10 networks shown in MCM)
+    oidSLIDNetworkToggles = new int[10]
+    slidNetworkNames = new string[10]
+    oidSLIDMissingRemove = new int[10]
+    slidMissingNames = new string[10]
 
     formTypeLabels = new string[12]
     formTypeLabels[0] = "$SCIE_FormWeapons"
@@ -533,8 +547,76 @@ Function RenderCompatibilityPage()
         AddTextOption("$SCIE_CompatNFF", "$SCIE_ValNotInstalled", OPTION_FLAG_DISABLED)
     endif
 
+    bool hasKWF = SCIE_NativeFunctions.IsKWFInstalled()
+    if hasKWF
+        AddTextOption("$SCIE_CompatKWF", "$SCIE_ValDetected")
+        AddTextOption("$SCIE_CompatKWFStorage", "$SCIE_ValSupported", OPTION_FLAG_DISABLED)
+    else
+        AddTextOption("$SCIE_CompatKWF", "$SCIE_ValNotInstalled", OPTION_FLAG_DISABLED)
+    endif
+
     AddTextOption("$SCIE_CompatSafetyFilter", "$SCIE_ValSafetyDesc", OPTION_FLAG_DISABLED)
     AddTextOption("$SCIE_CompatCookingException", "$SCIE_ValCookingDesc", OPTION_FLAG_DISABLED)
+
+    ; SLID Integration
+    AddEmptyOption()
+    AddHeaderOption("$SCIE_HeaderSLIDIntegration")
+
+    bool hasSLID = SCIE_NativeFunctions.IsSLIDInstalled()
+    if hasSLID
+        ; Request fresh network list
+        SCIE_NativeFunctions.RefreshSLIDNetworks()
+
+        AddTextOption("$SCIE_CompatSLID", "$SCIE_ValDetected")
+
+        int networkCount = SCIE_NativeFunctions.GetSLIDNetworkCount()
+        int missingCount = SCIE_NativeFunctions.GetSLIDMissingNetworkCount()
+
+        ; Show available networks with toggles
+        if networkCount > 0
+            AddTextOption("$SCIE_SLIDNetworksAvailable", networkCount, OPTION_FLAG_DISABLED)
+
+            int i = 0
+            while i < networkCount && i < 10
+                string networkName = SCIE_NativeFunctions.GetSLIDNetworkName(i)
+                bool isEnabled = SCIE_NativeFunctions.IsSLIDNetworkEnabled(networkName)
+                oidSLIDNetworkToggles[i] = AddToggleOption(networkName, isEnabled)
+                slidNetworkNames[i] = networkName
+                i += 1
+            endwhile
+            slidNetworkCount = i
+
+            if networkCount > 10
+                AddTextOption("$SCIE_SLIDMoreNetworks", "", OPTION_FLAG_DISABLED)
+            endif
+        else
+            AddTextOption("$SCIE_SLIDNoNetworks", "", OPTION_FLAG_DISABLED)
+            slidNetworkCount = 0
+        endif
+
+        ; Show missing networks with Remove buttons
+        if missingCount > 0
+            AddEmptyOption()
+            AddTextOption("$SCIE_SLIDMissingNetworks", missingCount, OPTION_FLAG_DISABLED)
+
+            int j = 0
+            while j < missingCount && j < 10
+                string missingName = SCIE_NativeFunctions.GetSLIDMissingNetworkName(j)
+                ; Show greyed out name on left, Remove button on right
+                AddTextOption(missingName, "", OPTION_FLAG_DISABLED)
+                oidSLIDMissingRemove[j] = AddTextOption("", "$SCIE_SLIDRemove")
+                slidMissingNames[j] = missingName
+                j += 1
+            endwhile
+            slidMissingCount = j
+        else
+            slidMissingCount = 0
+        endif
+    else
+        AddTextOption("$SCIE_CompatSLID", "$SCIE_ValNotInstalled", OPTION_FLAG_DISABLED)
+        slidNetworkCount = 0
+        slidMissingCount = 0
+    endif
 
     ; Item Protection
     AddEmptyOption()
@@ -620,7 +702,7 @@ Function RenderAboutPage()
     SetCursorPosition(0)
 
     AddHeaderOption("$SCIE_HeaderSCIE")
-    AddTextOption("$SCIE_LabelVersion", "2.5.4")
+    AddTextOption("$SCIE_LabelVersion", "2.5.5")
     AddTextOption("$SCIE_LabelAuthor", "Ohfor")
 
     AddEmptyOption()
@@ -873,6 +955,16 @@ Event OnOptionSelect(int option)
         if HandleFilterToggleSelect(option)
             return
         endif
+
+        ; Check if it's one of the SLID network toggles
+        if HandleSLIDNetworkToggleSelect(option)
+            return
+        endif
+
+        ; Check if it's one of the SLID missing network Remove buttons
+        if HandleSLIDMissingRemoveSelect(option)
+            return
+        endif
     endif
 EndEvent
 
@@ -1039,6 +1131,40 @@ bool Function HandleFilterToggleSelect(int option)
             bool newValue = !SCIE_NativeFunctions.GetFilterSetting(selectedStation, i)
             SCIE_NativeFunctions.SetFilterSetting(selectedStation, i, newValue)
             SetToggleOptionValue(option, newValue)
+            return true
+        endif
+        i += 1
+    endwhile
+    return false
+EndFunction
+
+; Handle click on a SLID network toggle in the Compatibility page
+; Returns true if the option was handled
+bool Function HandleSLIDNetworkToggleSelect(int option)
+    int i = 0
+    while i < slidNetworkCount
+        if option == oidSLIDNetworkToggles[i]
+            string networkName = slidNetworkNames[i]
+            bool newValue = !SCIE_NativeFunctions.IsSLIDNetworkEnabled(networkName)
+            SCIE_NativeFunctions.SetSLIDNetworkEnabled(networkName, newValue)
+            SetToggleOptionValue(option, newValue)
+            return true
+        endif
+        i += 1
+    endwhile
+    return false
+EndFunction
+
+; Handle click on a SLID missing network Remove button in the Compatibility page
+; Returns true if the option was handled
+bool Function HandleSLIDMissingRemoveSelect(int option)
+    int i = 0
+    while i < slidMissingCount
+        if option == oidSLIDMissingRemove[i]
+            string networkName = slidMissingNames[i]
+            SCIE_NativeFunctions.RemoveSLIDNetwork(networkName)
+            ; Force page refresh to update the list
+            ForcePageReset()
             return true
         endif
         i += 1
