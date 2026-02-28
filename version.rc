@@ -1,8 +1,8 @@
 #include <winres.h>
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION 2,5,5,0
-PRODUCTVERSION 2,5,5,0
+FILEVERSION 2,5,6,0
+PRODUCTVERSION 2,5,6,0
 FILEFLAGSMASK 0x3fL
 FILEFLAGS 0x0L
 FILEOS 0x40004L
@@ -14,12 +14,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "FileDescription", "Crafting Inventory Extender - SKSE Plugin"
-            VALUE "FileVersion", "2.5.5.0"
+            VALUE "FileVersion", "2.5.6.0"
             VALUE "InternalName", "CraftingInventoryExtender"
             VALUE "LegalCopyright", "MIT License"
             VALUE "OriginalFilename", "CraftingInventoryExtender.dll"
             VALUE "ProductName", "Crafting Inventory Extender"
-            VALUE "ProductVersion", "2.5.5.0"
+            VALUE "ProductVersion", "2.5.6.0"
         END
     END
     BLOCK "VarFileInfo"

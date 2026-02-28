@@ -223,6 +223,14 @@ namespace Services {
                 break;
         }
 
+        // Non-persistent containers cannot function as globals — they are evicted from memory
+        // when their cell unloads, causing LookupByID to return null from other locations.
+        // Skip GLOBAL and cycle directly to OFF when this is detected.
+        if (newState == ContainerState::kGlobal && a_ref && IsContainerNonPersistent(a_ref)) {
+            logger::warn("Container {:08X} is non-persistent — skipping GLOBAL, cycling to OFF", a_formID);
+            newState = ContainerState::kOff;
+        }
+
         // Always keep the override so the container stays visible in MCM
         if (it != m_playerOverrides.end()) {
             it->second.state = newState;
@@ -685,12 +693,16 @@ namespace Services {
 
         // Player-promoted globals
         std::size_t playerGlobalCount = 0;
+        std::unordered_map<RE::FormID, std::string> globalNames;  // FormID -> display name from cosave
         {
             std::lock_guard lock(m_overridesMutex);
             for (const auto& [formID, info] : m_playerOverrides) {
                 if (info.state == ContainerState::kGlobal) {
                     globalFormIDs.insert(formID);
                     playerGlobalCount++;
+                    if (!info.name.empty()) {
+                        globalNames[formID] = info.name;
+                    }
                     logger::info("GetGlobalContainers: Player-promoted global {:08X} '{}' in '{}'",
                         formID, info.name, info.location);
                 } else if (info.state == ContainerState::kOff) {
@@ -711,16 +723,21 @@ namespace Services {
             // Resolve the FormID to an actual reference
             auto* form = RE::TESForm::LookupByID(formID);
             if (!form) {
-                logger::warn("Global container {:08X} FormID lookup failed - reference may not be loaded", formID);
+                logger::warn("Global container {:08X} FormID lookup failed - non-persistent ref in unloaded cell", formID);
 
-                // Show on-screen notification for VR users (once per session per FormID)
+                // Show on-screen notification (once per session per FormID)
                 auto& session = Hooks::g_craftingSession;
                 if (session.active && !session.notifiedFailedGlobals.contains(formID)) {
                     session.notifiedFailedGlobals.insert(formID);
-                    auto pluginName = GetESPFilename(formID);
-                    auto localFormID = formID & ((formID >> 24) == 0xFE ? 0xFFF : 0x00FFFFFF);
-                    auto msg = std::format("SCIE - VR Limitation: Cannot access global container 0x{:X} in {}",
-                        localFormID, pluginName.empty() ? "Unknown" : pluginName);
+                    auto nameIt = globalNames.find(formID);
+                    std::string displayName;
+                    if (nameIt != globalNames.end() && !nameIt->second.empty()) {
+                        displayName = nameIt->second;
+                    } else {
+                        auto pluginName = GetESPFilename(formID);
+                        displayName = "container in " + (pluginName.empty() ? "Unknown" : pluginName);
+                    }
+                    auto msg = std::format("SCIE: {} not loaded (too far away)", displayName);
                     RE::DebugNotification(msg.c_str());
                 }
                 continue;
@@ -904,12 +921,17 @@ namespace Services {
             const auto& info = sorted[i];
             std::string name = info.name.empty() ? fmt::format("Container {:08X}", info.formID) : info.name;
 
-            // Check if container has the respawn flag (unsafe for permanent storage)
+            // Check for warning suffixes
             auto* form = RE::TESForm::LookupByID(info.formID);
             if (form) {
                 auto* ref = form->As<RE::TESObjectREFR>();
-                if (ref && IsContainerUnsafe(ref)) {
-                    name += TranslationService::GetSingleton()->GetTranslation("$SCIE_SuffixUnsafe");
+                if (ref) {
+                    if (IsContainerUnsafe(ref)) {
+                        name += TranslationService::GetSingleton()->GetTranslation("$SCIE_SuffixUnsafe");
+                    }
+                    if (info.state == ContainerState::kGlobal && IsContainerNonPersistent(ref)) {
+                        name += TranslationService::GetSingleton()->GetTranslation("$SCIE_SuffixNonPersistent");
+                    }
                 }
             }
 
@@ -928,34 +950,31 @@ namespace Services {
         std::lock_guard lock(m_overridesMutex);
 
         for (auto& [formID, info] : m_playerOverrides) {
-            // Try to backfill name
-            if (info.name.empty()) {
-                auto* form = RE::TESForm::LookupByID(formID);
-                if (form) {
-                    auto* ref = form->As<RE::TESObjectREFR>();
-                    if (ref) {
-                        auto* baseObj = ref->GetBaseObject();
-                        if (baseObj) {
-                            const char* baseName = baseObj->GetName();
-                            if (baseName && baseName[0]) {
-                                info.name = baseName;
-                            }
-                        }
+            auto* form = RE::TESForm::LookupByID(formID);
+            auto* ref = form ? form->As<RE::TESObjectREFR>() : nullptr;
 
-                        // Try to get cell name if location is empty
-                        // Prefer display name over editor ID for consistency with CaptureContainerMetadata
-                        if (info.location.empty()) {
-                            auto* cell = ref->GetParentCell();
-                            if (cell) {
-                                const char* fullName = cell->GetName();
-                                if (fullName && fullName[0]) {
-                                    info.location = fullName;
-                                } else {
-                                    const char* cellName = cell->GetFormEditorID();
-                                    if (cellName && cellName[0]) {
-                                        info.location = cellName;
-                                    }
-                                }
+            // Try to backfill name
+            if (info.name.empty() && ref) {
+                auto* baseObj = ref->GetBaseObject();
+                if (baseObj) {
+                    const char* baseName = baseObj->GetName();
+                    if (baseName && baseName[0]) {
+                        info.name = baseName;
+                    }
+                }
+
+                // Try to get cell name if location is empty
+                // Prefer display name over editor ID for consistency with CaptureContainerMetadata
+                if (info.location.empty()) {
+                    auto* cell = ref->GetParentCell();
+                    if (cell) {
+                        const char* fullName = cell->GetName();
+                        if (fullName && fullName[0]) {
+                            info.location = fullName;
+                        } else {
+                            const char* cellName = cell->GetFormEditorID();
+                            if (cellName && cellName[0]) {
+                                info.location = cellName;
                             }
                         }
                     }

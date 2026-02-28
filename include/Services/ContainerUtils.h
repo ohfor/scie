@@ -26,4 +26,16 @@ namespace Services {
         return false;
     }
 
+    /// Check if a container reference is non-persistent (will be evicted when its cell unloads).
+    /// Uses InGameFormFlag::kRefOriginalPersistent (bit 6) which the engine sets natively on refs
+    /// whose plugin record has the Persistent flag. Non-persistent refs have this bit clear.
+    ///
+    /// Important: Runtime IsPersistent() and formFlags & 0x400 are UNRELIABLE — the engine sets
+    /// kPersistent on ALL loaded refs regardless of their plugin record flags.
+    /// kRefOriginalPersistent is the only reliable runtime indicator.
+    inline bool IsContainerNonPersistent(RE::TESObjectREFR* a_ref) {
+        if (!a_ref) return false;
+        return !a_ref->inGameFormFlags.any(RE::TESForm::InGameFormFlag::kRefOriginalPersistent);
+    }
+
 }  // namespace Services

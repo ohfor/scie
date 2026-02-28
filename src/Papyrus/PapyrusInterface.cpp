@@ -27,7 +27,12 @@ namespace Papyrus {
             return Services::IsContainerUnsafe(a_ref);
         }
 
-        /// Get display name for a container, with " - UNSAFE" suffix if it has the respawn flag
+        /// Papyrus wrapper: check if a container is non-persistent (will be evicted on cell unload)
+        bool IsContainerNonPersistent(RE::StaticFunctionTag*, RE::TESObjectREFR* a_ref) {
+            return Services::IsContainerNonPersistent(a_ref);
+        }
+
+        /// Get display name for a container, with warning suffixes as applicable
         RE::BSFixedString GetContainerDisplayName(RE::StaticFunctionTag*, RE::TESObjectREFR* a_ref) {
             if (!a_ref) return "";
 
@@ -489,17 +494,22 @@ namespace Papyrus {
         }
 
         /// Manually grant SCIE powers to player
-        /// Returns number of powers added (0-2)
+        /// Returns: 1-2 = powers added, 0 = already has all, -1 = ESP forms not found
         std::int32_t GrantPowers(RE::StaticFunctionTag*) {
             auto* player = RE::PlayerCharacter::GetSingleton();
             if (!player) {
                 logger::warn("GrantPowers: Player not available");
-                return 0;
+                return -1;
             }
 
             auto* dh = RE::TESDataHandler::GetSingleton();
             auto* togglePower = dh ? dh->LookupForm<RE::SpellItem>(0x802, "CraftingInventoryExtender.esp") : nullptr;
             auto* detectPower = dh ? dh->LookupForm<RE::SpellItem>(0x804, "CraftingInventoryExtender.esp") : nullptr;
+
+            if (!togglePower && !detectPower) {
+                logger::error("GrantPowers: Both power forms not found in CraftingInventoryExtender.esp - plugin may not be loaded (VR users: check Skyrim VR ESL Support is installed)");
+                return -1;
+            }
 
             std::int32_t added = 0;
 
@@ -507,29 +517,38 @@ namespace Papyrus {
                 player->AddSpell(togglePower);
                 logger::info("GrantPowers: Added SCIE_TogglePower to player");
                 added++;
+            } else if (!togglePower) {
+                logger::warn("GrantPowers: SCIE_TogglePower (0x802) not found in CraftingInventoryExtender.esp");
             }
 
             if (detectPower && !player->HasSpell(detectPower)) {
                 player->AddSpell(detectPower);
                 logger::info("GrantPowers: Added SCIE_DetectPower to player");
                 added++;
+            } else if (!detectPower) {
+                logger::warn("GrantPowers: SCIE_DetectPower (0x804) not found in CraftingInventoryExtender.esp");
             }
 
             return added;
         }
 
         /// Manually revoke SCIE powers from player
-        /// Returns number of powers removed (0-2)
+        /// Returns: 1-2 = powers removed, 0 = had none, -1 = ESP forms not found
         std::int32_t RevokePowers(RE::StaticFunctionTag*) {
             auto* player = RE::PlayerCharacter::GetSingleton();
             if (!player) {
                 logger::warn("RevokePowers: Player not available");
-                return 0;
+                return -1;
             }
 
             auto* dh = RE::TESDataHandler::GetSingleton();
             auto* togglePower = dh ? dh->LookupForm<RE::SpellItem>(0x802, "CraftingInventoryExtender.esp") : nullptr;
             auto* detectPower = dh ? dh->LookupForm<RE::SpellItem>(0x804, "CraftingInventoryExtender.esp") : nullptr;
+
+            if (!togglePower && !detectPower) {
+                logger::error("RevokePowers: Both power forms not found in CraftingInventoryExtender.esp - plugin may not be loaded (VR users: check Skyrim VR ESL Support is installed)");
+                return -1;
+            }
 
             std::int32_t removed = 0;
 
@@ -736,6 +755,7 @@ namespace Papyrus {
 
         // New functions
         a_vm->RegisterFunction("IsContainerUnsafe", ScriptName, IsContainerUnsafe);
+        a_vm->RegisterFunction("IsContainerNonPersistent", ScriptName, IsContainerNonPersistent);
         a_vm->RegisterFunction("GetContainerDisplayName", ScriptName, GetContainerDisplayName);
         a_vm->RegisterFunction("IsValidToggleTarget", ScriptName, IsValidToggleTarget);
         a_vm->RegisterFunction("ToggleCraftingContainer", ScriptName, ToggleCraftingContainer);

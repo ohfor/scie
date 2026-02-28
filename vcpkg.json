@@ -1,7 +1,7 @@
 {
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
     "name": "craftinginventoryextender",
-    "version-string": "2.5.5",
+    "version-string": "2.5.6",
     "description": "SKSE plugin that extends crafting menus to include items from nearby containers",
     "license": "MIT",
     "builtin-baseline": "66c0373dc7fca549e5803087b9487edfe3aca0a1",

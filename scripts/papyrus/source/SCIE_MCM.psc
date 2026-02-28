@@ -120,7 +120,7 @@ int slidMissingCount = 0         ; Number of missing networks displayed
 
 Event OnConfigInit()
     ModName = "SCIE"
-    CurrentVersion = 255  ; v2.5.5: KWF support, SLID integration, split patches
+    CurrentVersion = 256  ; v2.5.6: Non-persistent container blocking, powers fix, crash fix
     InitializePages()
     InitializeFilteringArrays()
 EndEvent
@@ -702,7 +702,7 @@ Function RenderAboutPage()
     SetCursorPosition(0)
 
     AddHeaderOption("$SCIE_HeaderSCIE")
-    AddTextOption("$SCIE_LabelVersion", "2.5.5")
+    AddTextOption("$SCIE_LabelVersion", "2.5.6")
     AddTextOption("$SCIE_LabelAuthor", "Ohfor")
 
     AddEmptyOption()
@@ -876,6 +876,8 @@ Event OnOptionSelect(int option)
         int granted = SCIE_NativeFunctions.GrantPowers()
         if granted > 0
             ShowMessage("$SCIE_FmtGranted{" + granted + "}", false)
+        elseif granted < 0
+            ShowMessage("$SCIE_MsgPowerFormsNotFound", false)
         else
             ShowMessage("$SCIE_MsgAlreadyHavePowers", false)
         endif
@@ -884,6 +886,8 @@ Event OnOptionSelect(int option)
         int revoked = SCIE_NativeFunctions.RevokePowers()
         if revoked > 0
             ShowMessage("$SCIE_FmtRevoked{" + revoked + "}", false)
+        elseif revoked < 0
+            ShowMessage("$SCIE_MsgPowerFormsNotFound", false)
         else
             ShowMessage("$SCIE_MsgNoPowersToRevoke", false)
         endif

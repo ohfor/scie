@@ -276,6 +276,16 @@ namespace Hooks::InventoryHooks {
                 return _originalGetInventoryItemEntryAtIdx(a_ref, a_idx, a_useMerchant);
             }
 
+            // Refresh source counts if crafting mutated inventories
+            // Must happen BEFORE index lookup — stale startIndex/itemCount causes
+            // out-of-bounds access (nexusphere crash signature at SkyrimSE+02E1FD0).
+            // Hook 1 and Hook 3 also check this, but DescriptionFramework (or the
+            // game) can call Hook 2 directly without Hook 1 running first.
+            if (g_craftingSession.needsCacheRefresh) {
+                logger::debug("GetInventoryItemEntryAtIdx: refreshing cache before index lookup");
+                RefreshSessionAfterCraft();
+            }
+
             // Clear deduplication cache when menu starts a new iteration (index 0)
             // This prevents count inflation if the menu re-queries all items
             if (a_idx == 0 && !g_craftingSession.seenItems.empty()) {

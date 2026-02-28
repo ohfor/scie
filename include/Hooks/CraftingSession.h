@@ -77,6 +77,7 @@ namespace Hooks {
         /// Called after crafting to pick up newly created items
         void RebuildInventoryCache() {
             inventoryCache.clear();
+            seenItems.clear();  // Invalidate stale InventoryEntryData pointers
 
             // Build set of favorited items (Essential Favorites compatibility)
             std::unordered_set<RE::TESBoundObject*> favoritedItems;

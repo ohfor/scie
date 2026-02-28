@@ -2,7 +2,12 @@
 
 All notable user-facing changes to SCIE.
 
-## [Unreleased]
+## [2.5.6] - 2026-02-28
+
+### Fixed
+- **Intermittent crafting station crash**: Fixed a race condition where inventory enumeration could use stale index data after crafting, causing access violation crashes. Most likely to occur during extended play sessions with DescriptionFramework installed.
+- **Powers equipping to hands**: Toggle and Detect powers now correctly assign to the Powers/Shout key instead of left/right hand
+- **Non-persistent global containers**: Non-persistent containers (most CC homestead containers, some vanilla barrels) can no longer be promoted to global — the toggle power now skips GLOBAL and cycles directly to OFF with an explanation notification. These containers are evicted from memory when you leave the area, making global access impossible. Persistent containers (LOTD Safehouse, Hearthfire built homes, General Stores) are unaffected. Runtime notification also changed from misleading "VR Limitation" to clearer "{name} not loaded (too far away)"
 
 ---
 

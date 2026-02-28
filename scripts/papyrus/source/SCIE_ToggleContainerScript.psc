@@ -73,8 +73,11 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
         endif
     endif
 
-    ; Get container name with " - UNSAFE" suffix if respawning
+    ; Get container name with warning suffixes
     string containerName = SCIE_NativeFunctions.GetContainerDisplayName(target)
+
+    ; Capture current state before toggling (for non-persistent skip detection)
+    int previousState = SCIE_NativeFunctions.GetContainerState(target)
 
     ; Get player for sound playback and animation
     Actor player = Game.GetPlayer()
@@ -84,7 +87,11 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
 
     ; Cycle the container state: OFF -> LOCAL -> GLOBAL -> OFF
     ; Returns: 0=off, 1=local, 2=global
+    ; Note: Non-persistent containers skip GLOBAL (LOCAL -> OFF) in the DLL
     int newState = SCIE_NativeFunctions.ToggleCraftingContainer(target)
+
+    ; Detect non-persistent GLOBAL skip: was LOCAL (1), expected GLOBAL (2), got OFF (0)
+    bool skippedGlobal = (previousState == 1 && newState == 0)
 
     if newState == 0
         ; Container is now OFF
@@ -92,6 +99,11 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
             DisableSound.Play(player)
         endif
         Game.ShakeController(0.4, 0.1, 0.08)
+
+        if skippedGlobal
+            ; Non-persistent container — GLOBAL was skipped, explain why
+            Debug.Notification(SCIE_NativeFunctions.Translate("$SCIE_ErrNonPersistent"))
+        endif
         Debug.Notification(SCIE_NativeFunctions.TranslateFormat("$SCIE_StateOff", containerName))
 
         if DisableShader

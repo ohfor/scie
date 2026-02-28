@@ -40,8 +40,13 @@ EndFunction
 ; Returns true if the container's contents may reset periodically.
 bool Function IsContainerUnsafe(ObjectReference akContainer) Global Native
 
-; Get display name for a container, with " - UNSAFE" suffix if it has the respawn flag.
-; Use this instead of GetDisplayName() + IsContainerUnsafe() separately.
+; Check if a container is non-persistent (will be evicted when its cell unloads).
+; Non-persistent containers cannot function as global containers because LookupByID
+; returns null once the player leaves the area. Uses the engine's kRefOriginalPersistent flag.
+bool Function IsContainerNonPersistent(ObjectReference akContainer) Global Native
+
+; Get display name for a container, with warning suffixes if applicable.
+; Appends " - UNSAFE" if the container respawns.
 string Function GetContainerDisplayName(ObjectReference akContainer) Global Native
 
 ; Check if a reference is a valid target for the toggle power.
