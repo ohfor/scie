@@ -104,7 +104,7 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
             ; Non-persistent container — GLOBAL was skipped, explain why
             Debug.Notification(SCIE_NativeFunctions.Translate("$SCIE_ErrNonPersistent"))
         endif
-        Debug.Notification(SCIE_NativeFunctions.TranslateFormat("$SCIE_StateOff", containerName))
+        Debug.Notification(SCIE_NativeFunctions.TranslateFormat("$SCIE_NotifyStateOff", containerName))
 
         if DisableShader
             DisableShader.Play(target, 1.5)
@@ -116,7 +116,7 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
             EnableSound.Play(player)
         endif
         Game.ShakeController(0.3, 0.3, 0.2)
-        Debug.Notification(SCIE_NativeFunctions.TranslateFormat("$SCIE_StateOn", containerName))
+        Debug.Notification(SCIE_NativeFunctions.TranslateFormat("$SCIE_NotifyStateOn", containerName))
 
         if EnableShader
             EnableShader.Play(target, 1.5)
@@ -128,7 +128,7 @@ Event OnEffectStart(Actor akTarget, Actor akCaster)
             EnableSound.Play(player)
         endif
         Game.ShakeController(0.3, 0.3, 0.2)
-        Debug.Notification(SCIE_NativeFunctions.TranslateFormat("$SCIE_StateGlobal", containerName))
+        Debug.Notification(SCIE_NativeFunctions.TranslateFormat("$SCIE_NotifyStateGlobal", containerName))
 
         if GlobalShader
             GlobalShader.Play(target, 1.5)

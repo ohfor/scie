@@ -8,6 +8,7 @@
 #include "Services/SLIDIntegration.h"
 #include "API/APIMessaging.h"
 #include "Papyrus/PapyrusInterface.h"
+#include "FormLookup.h"
 
 #include <ShlObj.h>  // For SHGetKnownFolderPath, FOLDERID_Documents
 
@@ -111,8 +112,7 @@ namespace {
     void SetCraftingActiveGlobal(bool active) {
         if (!g_craftingActiveGlobal) {
             // Lazy lookup - only done once
-            auto* dh = RE::TESDataHandler::GetSingleton();
-            g_craftingActiveGlobal = dh ? dh->LookupForm<RE::TESGlobal>(0x809, "CraftingInventoryExtender.esp") : nullptr;
+            g_craftingActiveGlobal = FormLookup::LookupForm<RE::TESGlobal>(0x809, "CraftingInventoryExtender.esp");
             if (!g_craftingActiveGlobal) {
                 // GLOB not found - this is expected if user hasn't updated their ESP yet
                 // or if the recipe visibility patch isn't installed
@@ -273,8 +273,8 @@ namespace {
 
         constexpr const char* pluginName = "CraftingInventoryExtender.esp";
 
-        auto* togglePower = dataHandler->LookupForm<RE::SpellItem>(0x802, pluginName);
-        auto* detectPower = dataHandler->LookupForm<RE::SpellItem>(0x804, pluginName);
+        auto* togglePower = FormLookup::LookupForm<RE::SpellItem>(0x802, pluginName);
+        auto* detectPower = FormLookup::LookupForm<RE::SpellItem>(0x804, pluginName);
 
         int added = 0;
 

@@ -120,7 +120,7 @@ int slidMissingCount = 0         ; Number of missing networks displayed
 
 Event OnConfigInit()
     ModName = "SCIE"
-    CurrentVersion = 256  ; v2.5.6: Non-persistent container blocking, powers fix, crash fix
+    CurrentVersion = 257  ; v2.5.7: Fix duplicate translation keys, VR ESL form lookup
     InitializePages()
     InitializeFilteringArrays()
 EndEvent
@@ -702,7 +702,7 @@ Function RenderAboutPage()
     SetCursorPosition(0)
 
     AddHeaderOption("$SCIE_HeaderSCIE")
-    AddTextOption("$SCIE_LabelVersion", "2.5.6")
+    AddTextOption("$SCIE_LabelVersion", "2.5.7")
     AddTextOption("$SCIE_LabelAuthor", "Ohfor")
 
     AddEmptyOption()

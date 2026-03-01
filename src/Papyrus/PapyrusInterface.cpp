@@ -6,6 +6,7 @@
 #include "Services/TranslationService.h"
 #include "Services/APIService.h"
 #include "Services/SLIDIntegration.h"
+#include "FormLookup.h"
 
 namespace Papyrus {
     namespace {
@@ -503,8 +504,8 @@ namespace Papyrus {
             }
 
             auto* dh = RE::TESDataHandler::GetSingleton();
-            auto* togglePower = dh ? dh->LookupForm<RE::SpellItem>(0x802, "CraftingInventoryExtender.esp") : nullptr;
-            auto* detectPower = dh ? dh->LookupForm<RE::SpellItem>(0x804, "CraftingInventoryExtender.esp") : nullptr;
+            auto* togglePower = dh ? FormLookup::LookupForm<RE::SpellItem>(0x802, "CraftingInventoryExtender.esp") : nullptr;
+            auto* detectPower = dh ? FormLookup::LookupForm<RE::SpellItem>(0x804, "CraftingInventoryExtender.esp") : nullptr;
 
             if (!togglePower && !detectPower) {
                 logger::error("GrantPowers: Both power forms not found in CraftingInventoryExtender.esp - plugin may not be loaded (VR users: check Skyrim VR ESL Support is installed)");
@@ -542,8 +543,8 @@ namespace Papyrus {
             }
 
             auto* dh = RE::TESDataHandler::GetSingleton();
-            auto* togglePower = dh ? dh->LookupForm<RE::SpellItem>(0x802, "CraftingInventoryExtender.esp") : nullptr;
-            auto* detectPower = dh ? dh->LookupForm<RE::SpellItem>(0x804, "CraftingInventoryExtender.esp") : nullptr;
+            auto* togglePower = dh ? FormLookup::LookupForm<RE::SpellItem>(0x802, "CraftingInventoryExtender.esp") : nullptr;
+            auto* detectPower = dh ? FormLookup::LookupForm<RE::SpellItem>(0x804, "CraftingInventoryExtender.esp") : nullptr;
 
             if (!togglePower && !detectPower) {
                 logger::error("RevokePowers: Both power forms not found in CraftingInventoryExtender.esp - plugin may not be loaded (VR users: check Skyrim VR ESL Support is installed)");
@@ -644,8 +645,8 @@ namespace Papyrus {
             auto* player = RE::PlayerCharacter::GetSingleton();
             if (player) {
                 auto* dh = RE::TESDataHandler::GetSingleton();
-                auto* togglePower = dh ? dh->LookupForm<RE::SpellItem>(0x802, "CraftingInventoryExtender.esp") : nullptr;
-                auto* detectPower = dh ? dh->LookupForm<RE::SpellItem>(0x804, "CraftingInventoryExtender.esp") : nullptr;
+                auto* togglePower = dh ? FormLookup::LookupForm<RE::SpellItem>(0x802, "CraftingInventoryExtender.esp") : nullptr;
+                auto* detectPower = dh ? FormLookup::LookupForm<RE::SpellItem>(0x804, "CraftingInventoryExtender.esp") : nullptr;
 
                 if (togglePower && player->HasSpell(togglePower)) {
                     player->RemoveSpell(togglePower);

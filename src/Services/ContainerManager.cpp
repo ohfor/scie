@@ -1,6 +1,7 @@
 #include "Services/ContainerManager.h"
 #include "Services/ContainerRegistry.h"
 #include "Services/INISettings.h"
+#include "FormLookup.h"
 #include <chrono>
 
 namespace Services {
@@ -21,11 +22,25 @@ namespace Services {
         }
 
         // CraftingSource_Enabled keyword from our ESP
-        m_craftingSourceKeyword = dataHandler->LookupForm<RE::BGSKeyword>(0x800, "CraftingInventoryExtender.esp");
+        m_craftingSourceKeyword = FormLookup::LookupForm<RE::BGSKeyword>(0x800, "CraftingInventoryExtender.esp");
         if (m_craftingSourceKeyword) {
             logger::info("Found CraftingSource_Enabled keyword");
         } else {
             logger::warn("CraftingSource_Enabled keyword not found - player marking will not work");
+            if (REL::Module::IsVR()) {
+                bool hasEngineFixes = std::filesystem::exists("Data/SKSE/Plugins/EngineFixesVR.dll");
+                bool hasESLSupport = std::filesystem::exists("Data/SKSE/Plugins/skyrimvresl.dll");
+                if (!hasEngineFixes) {
+                    logger::error("VR detected but Engine Fixes VR is not installed. "
+                        "Required for Skyrim VR ESL Support. "
+                        "Get it at: https://www.nexusmods.com/skyrimspecialedition/mods/62089");
+                }
+                if (!hasESLSupport) {
+                    logger::error("VR detected but Skyrim VR ESL Support is not installed. "
+                        "SCIE's ESL-flagged plugin cannot load without it. "
+                        "Get it at: https://www.nexusmods.com/skyrimspecialedition/mods/106712");
+                }
+            }
         }
 
         // Vanilla factions for horse/follower/spouse support

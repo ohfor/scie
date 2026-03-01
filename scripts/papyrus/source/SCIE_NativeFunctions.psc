@@ -418,7 +418,7 @@ string Function Translate(string asKey) Global Native
 
 ; Look up a translation key and replace {0}, {1}, {2} placeholders with args.
 ; Translators can reorder placeholders for grammar differences between languages.
-; asKey: Translation key (e.g., "$SCIE_StateOff")
+; asKey: Translation key (e.g., "$SCIE_NotifyStateOff")
 ; asArg0-2: Values to substitute for {0}, {1}, {2} (default: "")
 ; Returns: Formatted translated string.
 string Function TranslateFormat(string asKey, string asArg0 = "", string asArg1 = "", string asArg2 = "") Global Native

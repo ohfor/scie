@@ -2,6 +2,14 @@
 
 All notable user-facing changes to SCIE.
 
+## [2.5.7] - 2026-03-01
+
+### Fixed
+- **MCM showing raw format strings**: The MCM Containers page displayed `{0} (SCIE OFF)` instead of `[OFF]` due to duplicate translation keys. Fixed by giving notification strings unique key names. Also fixes the SCIE-Babel translations package.
+- **VR powers not working**: Fixed incorrect form ID computation on VR when other ESL mods are installed. Powers now resolve correctly regardless of load order. **VR users upgrading from a previous version**: go to MCM > Maintenance > Revoke Powers, then Grant Powers once to clean up stale entries from your save.
+
+---
+
 ## [2.5.6] - 2026-02-28
 
 ### Fixed
