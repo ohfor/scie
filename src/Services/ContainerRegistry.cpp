@@ -1338,10 +1338,8 @@ namespace Services {
         // Backfill metadata for migrated/loaded overrides (name, location, ESP fallback)
         GetSingleton()->BackfillOverrideMetadata();
 
-        // Refresh SLID containers for enabled networks
-        if (SLIDIntegration::GetSingleton()->IsSLIDInstalled()) {
-            SLIDIntegration::GetSingleton()->Refresh();
-        }
+        // NOTE: SLID refresh moved to kPostLoadGame in main.cpp — SLID hasn't
+        // initialized its networks yet during cosave load.
     }
 
     void ContainerRegistry::OnRevert(SKSE::SerializationInterface* a_intfc) {

@@ -120,7 +120,7 @@ int slidMissingCount = 0         ; Number of missing networks displayed
 
 Event OnConfigInit()
     ModName = "SCIE"
-    CurrentVersion = 257  ; v2.5.7: Fix duplicate translation keys, VR ESL form lookup
+    CurrentVersion = 258  ; v2.5.8: Retire recipe patch ESPs, Hook 5 defense-in-depth
     InitializePages()
     InitializeFilteringArrays()
 EndEvent
@@ -702,7 +702,7 @@ Function RenderAboutPage()
     SetCursorPosition(0)
 
     AddHeaderOption("$SCIE_HeaderSCIE")
-    AddTextOption("$SCIE_LabelVersion", "2.5.7")
+    AddTextOption("$SCIE_LabelVersion", "2.5.8")
     AddTextOption("$SCIE_LabelAuthor", "Ohfor")
 
     AddEmptyOption()

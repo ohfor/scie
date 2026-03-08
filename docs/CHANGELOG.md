@@ -2,6 +2,16 @@
 
 All notable user-facing changes to SCIE.
 
+## [2.5.8] - 2026-03-08
+
+### Changed
+- **Recipe visibility patches replaced with stubs**: The four optional recipe patch ESPs (`CraftingInventoryExtenderVanillaCountFix.esp`, `SCIE_DLC_RecipesPatch.esp`, `SCIE_CC_ForgottenSeasons_RecipesPatch.esp`, `SCIE_CCOR_RecipesPatch.esp`) are now empty stubs. Research confirmed SCIE's core inventory hook already makes recipes visible when materials are in SCIE containers — the duplicate recipes in the patch ESPs were unnecessary. **Existing users**: the stubs maintain save compatibility. You can safely leave them installed or remove them if you started a new save.
+
+### Fixed
+- **SLID network detection on game load**: SLID networks were not detected until the second game load because the network list was requested too early during save loading. Now requested after all plugins finish initializing.
+
+---
+
 ## [2.5.7] - 2026-03-01
 
 ### Fixed

@@ -11,6 +11,7 @@
 #include "FormLookup.h"
 
 #include <ShlObj.h>  // For SHGetKnownFolderPath, FOLDERID_Documents
+#include <MinHook.h>  // For COBJTrace debug hook
 
 // Plugin version info for SKSE
 extern "C" __declspec(dllexport) constinit auto SKSEPlugin_Version = []() {
@@ -186,6 +187,109 @@ namespace {
         ActivationEventHandler() = default;
     };
 
+    // =================================================================
+    // Hook 5: BGSConstructibleObject::sub (AE 16916 / SE 16561)
+    //
+    // Per-COBJ material availability check. Called once per recipe during
+    // crafting menu build. Returns 1 if player has required materials, 0 if not.
+    //
+    // This function is called from within the ConstructibleObjectMenu's
+    // condition chain (frame [1] in the evaluation stack). Other conditions
+    // (perks, quest stages, etc.) are evaluated independently in outer frames,
+    // so overriding this function only affects the material availability check.
+    //
+    // When SCIE session is active and the original returns 0 (materials
+    // missing from player inventory), we check SCIE's combined inventory
+    // cache. If containers can supply all required materials, we return 1
+    // to make the recipe visible. This eliminates the need for recipe
+    // visibility patch ESPs.
+    // =================================================================
+
+    namespace COBJHook {
+        using COBJSub_t = std::int64_t(__fastcall*)(void* a1, void* a2, void* a3, void* a4);
+        static COBJSub_t _originalCOBJSub = nullptr;
+
+        static volatile long s_callCount = 0;
+        static volatile long s_overrideCount = 0;
+
+        static std::int64_t __fastcall Hook_COBJSub(void* a1, void* a2, void* a3, void* a4) {
+            auto result = _originalCOBJSub(a1, a2, a3, a4);
+            InterlockedIncrement(&s_callCount);
+
+            // Only intervene when original says "not craftable" and SCIE session is active
+            if (result != 0 || !Hooks::g_craftingSession.active) {
+                return result;
+            }
+
+            // Verify a1 is a BGSConstructibleObject
+            if (!a1) return result;
+            auto* cobj = static_cast<RE::BGSConstructibleObject*>(static_cast<RE::TESForm*>(a1));
+            if (cobj->GetFormType() != RE::FormType::ConstructibleObject) {
+                return result;
+            }
+
+            // Skip recipes with no material requirements — the 0 must be from
+            // something else (conditions, null created item, etc.)
+            if (cobj->requiredItems.numContainerObjects == 0) {
+                return result;
+            }
+
+            // Check if SCIE's combined inventory satisfies all required materials
+            bool canCraft = true;
+            cobj->requiredItems.ForEachContainerObject([&](RE::ContainerObject& entry) -> RE::BSContainer::ForEachResult {
+                if (!entry.obj || entry.count <= 0) {
+                    return RE::BSContainer::ForEachResult::kContinue;
+                }
+
+                auto available = Hooks::g_craftingSession.GetCachedItemCount(entry.obj);
+                if (available < entry.count) {
+                    canCraft = false;
+                    return RE::BSContainer::ForEachResult::kStop;
+                }
+                return RE::BSContainer::ForEachResult::kContinue;
+            });
+
+            if (canCraft) {
+                InterlockedIncrement(&s_overrideCount);
+                logger::info("[COBJ-HOOK] Override: {:08X} '{}' — SCIE containers satisfy materials",
+                    cobj->GetFormID(), cobj->createdItem ? cobj->createdItem->GetName() : "(null)");
+                return 1;
+            }
+
+            return result;
+        }
+
+        void LogSummary() {
+            auto total = InterlockedExchange(&s_callCount, 0);
+            auto overrides = InterlockedExchange(&s_overrideCount, 0);
+            logger::info("[COBJ-HOOK] Summary: {} calls, {} overrides", total, overrides);
+        }
+
+        bool Install() {
+            REL::Relocation<std::uintptr_t> target{ REL::RelocationID(16561, 16916) };
+            auto addr = target.address();
+
+            auto status = MH_CreateHook(
+                reinterpret_cast<void*>(addr),
+                reinterpret_cast<void*>(&Hook_COBJSub),
+                reinterpret_cast<void**>(&_originalCOBJSub));
+
+            if (status != MH_OK) {
+                logger::error("[COBJ-HOOK] MH_CreateHook failed: {}", MH_StatusToString(status));
+                return false;
+            }
+
+            status = MH_EnableHook(reinterpret_cast<void*>(addr));
+            if (status != MH_OK) {
+                logger::error("[COBJ-HOOK] MH_EnableHook failed: {}", MH_StatusToString(status));
+                return false;
+            }
+
+            logger::info("[COBJ-HOOK] BGSConstructibleObject::sub hooked at 0x{:X} (SE 16561 / AE 16916)", addr);
+            return true;
+        }
+    }
+
     // Menu event handler to detect crafting menu open/close
     class MenuEventHandler : public RE::BSTEventSink<RE::MenuOpenCloseEvent> {
     public:
@@ -217,6 +321,7 @@ namespace {
 
                     // Always reset GLOB to 0 on menu close
                     SetCraftingActiveGlobal(false);
+                    COBJHook::LogSummary();
                 }
             }
 
@@ -321,10 +426,19 @@ namespace {
                 if (auto* papyrus = SKSE::GetPapyrusInterface()) {
                     papyrus->Register(Papyrus::RegisterFunctions);
                 }
+
+                // Hook 5: COBJ material availability override (eliminates recipe patch ESPs)
+                COBJHook::Install();
                 break;
             case SKSE::MessagingInterface::kPostLoadGame:
                 logger::info("Game loaded");
                 GrantPowersToPlayer();
+                // Refresh SLID network list now that all plugins have finished loading.
+                // Previously done during cosave load, but SLID hasn't populated its
+                // networks yet at that point (returns 0 names).
+                if (Services::SLIDIntegration::GetSingleton()->IsSLIDInstalled()) {
+                    Services::SLIDIntegration::GetSingleton()->Refresh();
+                }
                 break;
             case SKSE::MessagingInterface::kNewGame:
                 logger::info("New game started");
