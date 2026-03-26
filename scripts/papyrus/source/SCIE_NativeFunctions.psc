@@ -119,6 +119,41 @@ Function SetPlayerContainerState(int aiIndex, int aiNewState) Global Native
 int Function RemovePlayerContainersByLocation(string asLocation) Global Native
 
 ; =============================================================================
+; INI CONTAINER DISPLAY (for MCM Containers page)
+; =============================================================================
+
+; Get count of INI files that resolved at least one container.
+; Returns 0 if no INI files are loaded or none resolved any containers.
+int Function GetINISourceCount() Global Native
+
+; Get INI source display name by index (0-based).
+; Returns the filename without .ini extension (e.g., "SCIE_VanillaHomes").
+string Function GetINISourceName(int aiIndex) Global Native
+
+; Get container display names for an INI source, filtered by toggle state.
+; asSourceName: display name from GetINISourceName
+; abIncludeLocal: include [Containers] entries (respects bEnableINIContainers)
+; abIncludeGlobal: include [GlobalContainers] entries (respects bEnableGlobalContainers)
+; Returns: array of container display names with warning suffixes
+string[] Function GetINISourceContainerNames(string asSourceName, bool abIncludeLocal, bool abIncludeGlobal) Global Native
+
+; Get container states for an INI source (parallel array with names).
+; Returns: array of states (1=local, 2=global)
+int[] Function GetINISourceContainerStates(string asSourceName, bool abIncludeLocal, bool abIncludeGlobal) Global Native
+
+; Get source plugin names for an INI source (parallel array with names).
+; Returns: array of plugin filenames (e.g., "Skyrim.esm")
+string[] Function GetINISourceContainerPlugins(string asSourceName, bool abIncludeLocal, bool abIncludeGlobal) Global Native
+
+; Get cell/location names for an INI source (parallel array with names).
+; Returns: array of cell display names (empty string if cell not loaded)
+string[] Function GetINISourceContainerLocations(string asSourceName, bool abIncludeLocal, bool abIncludeGlobal) Global Native
+
+; Get reachability for an INI source (parallel array with names).
+; Returns: array of bools (true=reachable now, false=out of range/unloaded)
+bool[] Function GetINISourceContainerReachable(string asSourceName, bool abIncludeLocal, bool abIncludeGlobal) Global Native
+
+; =============================================================================
 ; LEGACY FUNCTIONS (for backwards compatibility)
 ; These still work but ToggleCraftingContainer is preferred
 ; =============================================================================

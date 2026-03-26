@@ -36,7 +36,10 @@ namespace Services {
         bool IsSessionActive() const;
 
         /// Get all registered containers as refs
-        std::vector<RE::TESObjectREFR*> GetRegisteredContainers() const;
+        /// @param a_globalOnly If true (default), only return global containers — stable
+        ///        regardless of player location. If false, also include local containers
+        ///        that are currently loaded (cell-dependent, may vary between calls).
+        std::vector<RE::TESObjectREFR*> GetRegisteredContainers(bool a_globalOnly = true) const;
 
         /// Get API version (major * 100 + minor, e.g., 254 = v2.5.4)
         static std::int32_t GetAPIVersion();

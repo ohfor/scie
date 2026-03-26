@@ -27,20 +27,29 @@ All API functions are global native functions on the `SCIE_API` script.
 #### `GetRegisteredContainers`
 
 ```papyrus
-ObjectReference[] Function GetRegisteredContainers() global native
+ObjectReference[] Function GetRegisteredContainers(bool abGlobalOnly = true) global native
 ```
 
-Returns an array of all containers currently registered with SCIE. This includes:
-- Player-marked containers (local and global)
-- INI-configured containers
-- Global containers from supported mods (LOTD, General Stores, Hip Bag)
+Returns an array of containers registered with SCIE.
 
-**Returns:** Array of `ObjectReference` for all active crafting containers.
+**Parameters:**
+- `abGlobalOnly` - If `true` (default), only returns global containers. This set is stable regardless of player location — the same containers are returned no matter which cell is loaded. If `false`, also includes local containers that happen to be loaded (cell-dependent, may vary between calls).
+
+When `abGlobalOnly = true` (the default), the result includes:
+- Player-promoted global containers
+- Global containers from supported mods (LOTD, General Stores, Hip Bag)
+- INI-configured global containers
+
+**Returns:** Array of `ObjectReference` for matching containers.
 
 **Example:**
 ```papyrus
-ObjectReference[] containers = SCIE_API.GetRegisteredContainers()
-Debug.Trace("SCIE has " + containers.Length + " registered containers")
+; Get stable global set (recommended for binding/filtering)
+ObjectReference[] globals = SCIE_API.GetRegisteredContainers()
+Debug.Trace("SCIE has " + globals.Length + " global containers")
+
+; Get everything including cell-dependent locals
+ObjectReference[] all = SCIE_API.GetRegisteredContainers(false)
 ```
 
 ---
@@ -296,7 +305,7 @@ SKSE::GetMessagingInterface()->RegisterListener("CraftingInventoryExtender", MyM
 namespace SCIE::API {
     enum class MessageType : std::uint32_t {
         // Requests (send TO SCIE)
-        kRequestContainers      = 'SCRC',  // Request registered container list
+        kRequestContainers      = 'SCRC',  // Request registered container list (globals only)
         kRequestContainerState  = 'SCRS',  // Request state of specific container
         kRequestInventory       = 'SCRI',  // Request merged inventory data
 
@@ -307,6 +316,8 @@ namespace SCIE::API {
     };
 }
 ```
+
+**Note:** `kRequestContainers` returns only global containers — the set is stable regardless of player location. Local containers are excluded because they depend on cell load state and would produce inconsistent results across calls.
 
 ### Request/Response Structures
 
@@ -455,4 +466,5 @@ EndFunction
 
 | Version | Changes |
 |---------|---------|
+| 2.5.10+ | `GetRegisteredContainers` defaults to globals-only; `abGlobalOnly` parameter added |
 | 2.5.4 | Initial public API release |

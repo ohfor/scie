@@ -32,6 +32,10 @@ namespace Hooks::InventoryHooks {
         GetInventoryItemCount_t _originalGetInventoryItemCount = nullptr;
         RemoveItem_t _originalRemoveItem = nullptr;
 
+        // VR-only: Hook 3b original pointer (standalone GetItemCount at VR 0x1f7f10)
+        // SE/AE never install this hook — the pointer stays null.
+        GetInventoryItemCount_t _originalGetInventoryItemCount_VR = nullptr;
+
         // Track if hooks are installed
         bool s_hooksInstalled = false;
 
@@ -465,6 +469,50 @@ namespace Hooks::InventoryHooks {
         }
 
         // ================================================================
+        // Hook 3b: VR-only GetInventoryItemCount (standalone variant)
+        // VR offset: 0x1f7f10 (VR equivalent of SE 15869)
+        //
+        // On SE/AE, Hook 3 intercepts SE 15869 (the standalone function).
+        // On VR, Hook 3's VariantID resolves to 0x1f7ed0, which is the VR
+        // equivalent of SE 15868 (the member function) — not SE 15869.
+        // The standalone function at VR 0x1f7f10 is used by
+        // ConstructibleObjectMenu::SetItemCardInfo to populate material
+        // count display and by the craft execution path. Without this
+        // hook, VR shows "0" for material counts and crafting fails.
+        //
+        // This hook is NEVER installed on SE/AE.
+        // ================================================================
+        std::int32_t Hook_GetInventoryItemCount_VR(RE::InventoryChanges* a_inv,
+            RE::TESBoundObject* a_item, void* a_filter)
+        {
+            if (!EnsureSessionActive()) {
+                return _originalGetInventoryItemCount_VR(a_inv, a_item, a_filter);
+            }
+
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            if (!player) {
+                return _originalGetInventoryItemCount_VR(a_inv, a_item, a_filter);
+            }
+
+            // Refresh cache if flagged (after crafting)
+            if (g_craftingSession.needsCacheRefresh) {
+                logger::trace("GetInventoryItemCount_VR: refreshing cache after craft");
+                RefreshSessionAfterCraft();
+            }
+
+            // Check cache — return merged count if item is tracked
+            auto cachedCount = g_craftingSession.GetCachedItemCount(a_item);
+            if (cachedCount > 0) {
+                logger::trace("GetInventoryItemCount_VR({}): returning {} (cached)",
+                    a_item ? a_item->GetName() : "null", cachedCount);
+                return cachedCount;
+            }
+
+            // Item not in cache — fall through to original
+            return _originalGetInventoryItemCount_VR(a_inv, a_item, a_filter);
+        }
+
+        // ================================================================
         // Hook 4: RemoveItem (via VTable)
         // VTable index: 0x56
         // Called when crafting consumes materials
@@ -650,6 +698,8 @@ namespace Hooks::InventoryHooks {
             }
 
             // Hook 3: GetInventoryItemCount (15869/16109)
+            // On SE/AE: hooks the standalone function at SE 15869 / AE 16109
+            // On VR: hooks the member function at VR 0x1f7ed0 (SE 15868 equivalent)
             {
                 REL::Relocation<std::uintptr_t> target{ REL::VariantID(15869, 16109, 0x1f7ed0) };
                 if (MH_CreateHook(reinterpret_cast<void*>(target.address()),
@@ -660,6 +710,24 @@ namespace Hooks::InventoryHooks {
                     success = false;
                 } else {
                     logger::info("GetInventoryItemCount hook created at {:X}", target.address());
+                }
+            }
+
+            // Hook 3b: VR-only standalone GetInventoryItemCount (VR 0x1f7f10)
+            // On VR, Hook 3 catches the member function (VR 0x1f7ed0) used by
+            // the COBJ condition chain. But SetItemCardInfo (material count display)
+            // and the craft execution path use the standalone function at VR 0x1f7f10.
+            // This hook is NEVER installed on SE/AE.
+            if (REL::Module::IsVR()) {
+                auto vrAddr = REL::Module::get().base() + 0x1f7f10;
+                if (MH_CreateHook(reinterpret_cast<void*>(vrAddr),
+                                 reinterpret_cast<void*>(&Hook_GetInventoryItemCount_VR),
+                                 reinterpret_cast<void**>(&_originalGetInventoryItemCount_VR)) != MH_OK)
+                {
+                    logger::error("Failed to create VR GetInventoryItemCount hook at {:X}", vrAddr);
+                    success = false;
+                } else {
+                    logger::info("VR GetInventoryItemCount hook created at {:X} (standalone variant)", vrAddr);
                 }
             }
 

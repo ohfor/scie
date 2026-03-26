@@ -223,8 +223,13 @@
     "$SCIE_DetectNone": "SCIE : Aucun conteneur à portée",
     "$SCIE_NotifyStateOn": "{0} (SCIE ACTIVÉ)",
     "$SCIE_MsgPowerFormsNotFound": "SCIE ERREUR : Formulaires de pouvoirs introuvables dans CraftingInventoryExtender.esp.\\n\\nLe fichier plugin n'est pas chargé. Vérifiez que CraftingInventoryExtender.esp est activé dans votre ordre de chargement.\\n\\nUtilisateurs VR : vous DEVEZ installer Skyrim VR ESL Support sinon les plugins ESL ne se chargeront pas.",
-    "$SCIE_SuffixNonPersistent": " - LOCAL UNIQUEMENT",
-    "$SCIE_ErrNonPersistent": "SCIE : Ce conteneur ne peut pas être utilisé globalement (non persistant)"
+    "$SCIE_HeaderINIContainerList": "Conteneurs configurés par INI",
+    "$SCIE_INIMoreContainers{}": "...et {} de plus",
+    "$SCIE_INIMoreFiles{}": "...et {} fichiers de config supplémentaires",
+    "$SCIE_SuffixOverridden": " - REMPLACÉ",
+    "$SCIE_INIContainerHint": "Noms affichés une fois les plugins chargés",
+    "$SCIE_HeaderINIAvailable": "Disponibles",
+    "$SCIE_HeaderINIOutOfRange": "Hors de portée"
   },
   "GERMAN": {
     "$SCIE_PageSettings": "Einstellungen",
@@ -450,8 +455,13 @@
     "$SCIE_DetectNone": "SCIE: Keine Behälter in Reichweite",
     "$SCIE_NotifyStateOn": "{0} (SCIE AN)",
     "$SCIE_MsgPowerFormsNotFound": "SCIE FEHLER: Power-Formulare nicht in CraftingInventoryExtender.esp gefunden.\\n\\nDie Plugin-Datei ist nicht geladen. Prüft, ob CraftingInventoryExtender.esp in Eurer Ladereihenfolge aktiviert ist.\\n\\nVR-Nutzer: Ihr MÜSST Skyrim VR ESL Support installieren, sonst werden ESL-Plugins nicht geladen.",
-    "$SCIE_SuffixNonPersistent": " - NUR LOKAL",
-    "$SCIE_ErrNonPersistent": "SCIE: Dieser Behälter kann nicht global genutzt werden (nicht persistent)"
+    "$SCIE_HeaderINIContainerList": "INI-konfigurierte Behälter",
+    "$SCIE_INIMoreContainers{}": "...und {} weitere",
+    "$SCIE_INIMoreFiles{}": "...und {} weitere Konfigurationsdateien",
+    "$SCIE_SuffixOverridden": " - ÜBERSCHRIEBEN",
+    "$SCIE_INIContainerHint": "Namen erscheinen nach Plugin-Laden",
+    "$SCIE_HeaderINIAvailable": "Verfügbar",
+    "$SCIE_HeaderINIOutOfRange": "Außer Reichweite"
   },
   "ITALIAN": {
     "$SCIE_PageSettings": "Impostazioni",
@@ -677,8 +687,13 @@
     "$SCIE_DetectNone": "SCIE: Nessun contenitore nel raggio",
     "$SCIE_NotifyStateOn": "{0} (SCIE ATTIVO)",
     "$SCIE_MsgPowerFormsNotFound": "SCIE ERRORE: Forme dei poteri non trovate in CraftingInventoryExtender.esp.\\n\\nIl file del plugin non è caricato. Verificate che CraftingInventoryExtender.esp sia abilitato nel vostro ordine di caricamento.\\n\\nUtenti VR: DOVETE installare Skyrim VR ESL Support o i plugin con flag ESL non verranno caricati.",
-    "$SCIE_SuffixNonPersistent": " - SOLO LOCALE",
-    "$SCIE_ErrNonPersistent": "SCIE: Questo contenitore non può essere usato globalmente (non persistente)"
+    "$SCIE_HeaderINIContainerList": "Contenitori configurati tramite INI",
+    "$SCIE_INIMoreContainers{}": "...e altri {}",
+    "$SCIE_INIMoreFiles{}": "...e altri {} file di configurazione",
+    "$SCIE_SuffixOverridden": " - SOVRASCRITTO",
+    "$SCIE_INIContainerHint": "Nomi visibili al caricamento dei plugin",
+    "$SCIE_HeaderINIAvailable": "Disponibili",
+    "$SCIE_HeaderINIOutOfRange": "Fuori portata"
   },
   "SPANISH": {
     "$SCIE_PageSettings": "Ajustes",
@@ -904,8 +919,13 @@
     "$SCIE_DetectNone": "SCIE: No hay contenedores en rango",
     "$SCIE_NotifyStateOn": "{0} (SCIE ACTIVADO)",
     "$SCIE_MsgPowerFormsNotFound": "SCIE ERROR: Formularios de poderes no encontrados en CraftingInventoryExtender.esp.\\n\\nEl archivo del plugin no está cargado. Comprueba que CraftingInventoryExtender.esp esté habilitado en tu orden de carga.\\n\\nUsuarios de VR: DEBÉIS instalar Skyrim VR ESL Support o los plugins con marca ESL no se cargarán.",
-    "$SCIE_SuffixNonPersistent": " - SOLO LOCAL",
-    "$SCIE_ErrNonPersistent": "SCIE: Este contenedor no puede usarse globalmente (no persistente)"
+    "$SCIE_HeaderINIContainerList": "Contenedores configurados por INI",
+    "$SCIE_INIMoreContainers{}": "...y {} más",
+    "$SCIE_INIMoreFiles{}": "...y {} archivos de configuración más",
+    "$SCIE_SuffixOverridden": " - ANULADO",
+    "$SCIE_INIContainerHint": "Nombres visibles tras cargar plugins",
+    "$SCIE_HeaderINIAvailable": "Disponibles",
+    "$SCIE_HeaderINIOutOfRange": "Fuera de alcance"
   },
   "RUSSIAN": {
     "$SCIE_PageSettings": "Настройки",
@@ -1131,8 +1151,13 @@
     "$SCIE_DetectNone": "SCIE: Нет контейнеров в радиусе",
     "$SCIE_NotifyStateOn": "{0} (SCIE ВКЛ)",
     "$SCIE_MsgPowerFormsNotFound": "SCIE ОШИБКА: Формы способностей не найдены в CraftingInventoryExtender.esp.\\n\\nФайл плагина не загружен. Проверьте, что CraftingInventoryExtender.esp включён в порядке загрузки.\\n\\nПользователи VR: вы ДОЛЖНЫ установить Skyrim VR ESL Support, иначе ESL-плагины не загрузятся.",
-    "$SCIE_SuffixNonPersistent": " - ТОЛЬКО ЛОКАЛЬНО",
-    "$SCIE_ErrNonPersistent": "SCIE: Этот контейнер нельзя использовать глобально (не постоянный)"
+    "$SCIE_HeaderINIContainerList": "Контейнеры из INI-файлов",
+    "$SCIE_INIMoreContainers{}": "...и ещё {}",
+    "$SCIE_INIMoreFiles{}": "...и ещё {} файлов конфигурации",
+    "$SCIE_SuffixOverridden": " - ПЕРЕОПРЕДЕЛЁН",
+    "$SCIE_INIContainerHint": "Имена появятся после загрузки плагинов",
+    "$SCIE_HeaderINIAvailable": "Доступны",
+    "$SCIE_HeaderINIOutOfRange": "Вне досягаемости"
   },
   "POLISH": {
     "$SCIE_PageSettings": "Ustawienia",
@@ -1358,8 +1383,13 @@
     "$SCIE_DetectNone": "SCIE: Brak pojemników w zasięgu",
     "$SCIE_NotifyStateOn": "{0} (SCIE WŁ)",
     "$SCIE_MsgPowerFormsNotFound": "SCIE BŁĄD: Formularze mocy nie znalezione w CraftingInventoryExtender.esp.\\n\\nPlik pluginu nie jest załadowany. Sprawdź, czy CraftingInventoryExtender.esp jest włączony w kolejności ładowania.\\n\\nUżytkownicy VR: MUSICIE zainstalować Skyrim VR ESL Support, bo pluginy ESL się nie załadują.",
-    "$SCIE_SuffixNonPersistent": " - TYLKO LOKALNIE",
-    "$SCIE_ErrNonPersistent": "SCIE: Ten pojemnik nie może być używany globalnie (nietrwały)"
+    "$SCIE_HeaderINIContainerList": "Pojemniki skonfigurowane w INI",
+    "$SCIE_INIMoreContainers{}": "...i jeszcze {}",
+    "$SCIE_INIMoreFiles{}": "...i jeszcze {} plików konfiguracji",
+    "$SCIE_SuffixOverridden": " - NADPISANY",
+    "$SCIE_INIContainerHint": "Nazwy pojawią się po załadowaniu pluginów",
+    "$SCIE_HeaderINIAvailable": "Dostępne",
+    "$SCIE_HeaderINIOutOfRange": "Poza zasięgiem"
   },
   "CZECH": {
     "$SCIE_PageSettings": "Nastavení",
@@ -1585,8 +1615,13 @@
     "$SCIE_DetectNone": "SCIE: Žádné kontejnery v dosahu",
     "$SCIE_NotifyStateOn": "{0} (SCIE ZAP)",
     "$SCIE_MsgPowerFormsNotFound": "SCIE CHYBA: Formuláře sil nenalezeny v CraftingInventoryExtender.esp.\\n\\nSoubor pluginu není načten. Zkontrolujte, zda je CraftingInventoryExtender.esp povolen ve vašem pořadí načítání.\\n\\nVR uživatelé: MUSÍTE nainstalovat Skyrim VR ESL Support, jinak se ESL pluginy nenačtou.",
-    "$SCIE_SuffixNonPersistent": " - POUZE LOKÁLNĚ",
-    "$SCIE_ErrNonPersistent": "SCIE: Tento kontejner nelze používat globálně (neperzistentní)"
+    "$SCIE_HeaderINIContainerList": "Kontejnery konfigurované v INI",
+    "$SCIE_INIMoreContainers{}": "...a dalších {}",
+    "$SCIE_INIMoreFiles{}": "...a dalších {} konfiguračních souborů",
+    "$SCIE_SuffixOverridden": " - PŘEPSÁNO",
+    "$SCIE_INIContainerHint": "Názvy se zobrazí po načtení pluginů",
+    "$SCIE_HeaderINIAvailable": "Dostupné",
+    "$SCIE_HeaderINIOutOfRange": "Mimo dosah"
   },
   "TURKISH": {
     "$SCIE_PageSettings": "Ayarlar",
@@ -1812,8 +1847,13 @@
     "$SCIE_DetectNone": "SCIE: Menzilde konteyner yok",
     "$SCIE_NotifyStateOn": "{0} (SCIE AÇIK)",
     "$SCIE_MsgPowerFormsNotFound": "SCIE HATA: Güç formları CraftingInventoryExtender.esp içinde bulunamadı.\\n\\nEklenti dosyası yüklenmemiş. CraftingInventoryExtender.esp dosyasının yükleme sıranızda etkin olduğundan emin olun.\\n\\nVR kullanıcıları: Skyrim VR ESL Support yüklemeniz ZORUNLUDUR, aksi takdirde ESL eklentileri yüklenmez.",
-    "$SCIE_SuffixNonPersistent": " - YALNIZCA YEREL",
-    "$SCIE_ErrNonPersistent": "SCIE: Bu kap global olarak kullanılamaz (kalıcı değil)"
+    "$SCIE_HeaderINIContainerList": "INI ile yapılandırılmış kaplar",
+    "$SCIE_INIMoreContainers{}": "...ve {} daha",
+    "$SCIE_INIMoreFiles{}": "...ve {} yapılandırma dosyası daha",
+    "$SCIE_SuffixOverridden": " - GEÇERSİZ KILINMIŞ",
+    "$SCIE_INIContainerHint": "Adlar eklenti yüklenince görünür",
+    "$SCIE_HeaderINIAvailable": "Mevcut",
+    "$SCIE_HeaderINIOutOfRange": "Menzil dışında"
   },
   "JAPANESE": {
     "$SCIE_PageSettings": "設定",
@@ -2039,8 +2079,13 @@
     "$SCIE_DetectNone": "SCIE: 範囲内にコンテナがありません",
     "$SCIE_NotifyStateOn": "{0} (SCIE ON)",
     "$SCIE_MsgPowerFormsNotFound": "SCIEエラー：CraftingInventoryExtender.espにパワーフォームが見つかりません。\\n\\nプラグインファイルが読み込まれていません。CraftingInventoryExtender.espがロードオーダーで有効になっているか確認してください。\\n\\nVRユーザー：Skyrim VR ESL Supportを必ずインストールしてください。ESLフラグ付きプラグインが読み込まれません。",
-    "$SCIE_SuffixNonPersistent": " - ローカルのみ",
-    "$SCIE_ErrNonPersistent": "SCIE: このコンテナはグローバルで使用できません（非永続）"
+    "$SCIE_HeaderINIContainerList": "INI設定済みコンテナ",
+    "$SCIE_INIMoreContainers{}": "...他{}個",
+    "$SCIE_INIMoreFiles{}": "...他{}個の設定ファイル",
+    "$SCIE_SuffixOverridden": " - オーバーライド済み",
+    "$SCIE_INIContainerHint": "プラグイン読込後に名前が表示されます",
+    "$SCIE_HeaderINIAvailable": "利用可能",
+    "$SCIE_HeaderINIOutOfRange": "範囲外"
   },
   "KOREAN": {
     "$SCIE_PageSettings": "설정",
@@ -2266,8 +2311,13 @@
     "$SCIE_DetectNone": "SCIE: 범위 내에 컨테이너 없음",
     "$SCIE_NotifyStateOn": "{0} (SCIE ON)",
     "$SCIE_MsgPowerFormsNotFound": "SCIE 오류: CraftingInventoryExtender.esp에서 파워 폼을 찾을 수 없습니다.\\n\\n플러그인 파일이 로드되지 않았습니다. CraftingInventoryExtender.esp가 로드 순서에서 활성화되어 있는지 확인하세요.\\n\\nVR 사용자: Skyrim VR ESL Support를 반드시 설치해야 합니다. 그렇지 않으면 ESL 플러그인이 로드되지 않습니다.",
-    "$SCIE_SuffixNonPersistent": " - 로컬 전용",
-    "$SCIE_ErrNonPersistent": "SCIE: 이 컨테이너는 글로벌로 사용할 수 없습니다 (비영구적)"
+    "$SCIE_HeaderINIContainerList": "INI로 구성된 컨테이너",
+    "$SCIE_INIMoreContainers{}": "...그리고 {}개 더",
+    "$SCIE_INIMoreFiles{}": "...그리고 {}개의 설정 파일 더",
+    "$SCIE_SuffixOverridden": " - 재정의됨",
+    "$SCIE_INIContainerHint": "플러그인 로드 후 이름이 표시됩니다",
+    "$SCIE_HeaderINIAvailable": "사용 가능",
+    "$SCIE_HeaderINIOutOfRange": "범위 밖"
   },
   "SCHINESE": {
     "$SCIE_PageSettings": "设置",
@@ -2493,8 +2543,13 @@
     "$SCIE_DetectNone": "SCIE：范围内没有容器",
     "$SCIE_NotifyStateOn": "{0}（SCIE 开）",
     "$SCIE_MsgPowerFormsNotFound": "SCIE 错误：在 CraftingInventoryExtender.esp 中未找到能力表单。\\n\\n插件文件未加载。请检查 CraftingInventoryExtender.esp 是否在加载顺序中启用。\\n\\nVR 用户：您必须安装 Skyrim VR ESL Support，否则 ESL 标记的插件将无法加载。",
-    "$SCIE_SuffixNonPersistent": " - 仅限本地",
-    "$SCIE_ErrNonPersistent": "SCIE：此容器无法全局使用（非持久化）"
+    "$SCIE_HeaderINIContainerList": "INI配置的容器",
+    "$SCIE_INIMoreContainers{}": "...还有{}个",
+    "$SCIE_INIMoreFiles{}": "...还有{}个配置文件",
+    "$SCIE_SuffixOverridden": " - 已覆盖",
+    "$SCIE_INIContainerHint": "插件加载后名称才会显示",
+    "$SCIE_HeaderINIAvailable": "可用",
+    "$SCIE_HeaderINIOutOfRange": "超出范围"
   },
   "TCHINESE": {
     "$SCIE_PageSettings": "設定",
@@ -2713,14 +2768,19 @@
     "$SCIE_ErrNoTarget": "SCIE：準星無目標",
     "$SCIE_ErrNotContainer": "SCIE：不是容器",
     "$SCIE_ErrUnsafeContainer": "SCIE：容器不安全（會重生）",
-    "$SCIE_ErrNonPersistent": "SCIE：此容器無法全域使用（非持久化）",
+    "$SCIE_ErrNonPersistent": "SCIE：此容器無法全局使用（非持久化）",
     "$SCIE_NotifyStateOff": "{0}（SCIE 關）",
     "$SCIE_NotifyStateGlobal": "{0}（SCIE 全域）",
     "$SCIE_DetectCounts": "SCIE：本地 {0}，全域 {1}，已停用 {2}",
     "$SCIE_DetectNone": "SCIE：範圍內沒有容器",
     "$SCIE_NotifyStateOn": "{0}（SCIE 開）",
     "$SCIE_MsgPowerFormsNotFound": "SCIE 錯誤：在 CraftingInventoryExtender.esp 中未找到能力表單。\\n\\n插件檔案未載入。請檢查 CraftingInventoryExtender.esp 是否在載入順序中啟用。\\n\\nVR 使用者：您必須安裝 Skyrim VR ESL Support，否則 ESL 標記的插件將無法載入。",
-    "$SCIE_SuffixNonPersistent": " - 僅限本地",
-    "$SCIE_ErrNonPersistent": "SCIE：此容器無法全局使用（非持久化）"
+    "$SCIE_HeaderINIContainerList": "INI配置的容器",
+    "$SCIE_INIMoreContainers{}": "...還有{}個",
+    "$SCIE_INIMoreFiles{}": "...還有{}個配置檔案",
+    "$SCIE_SuffixOverridden": " - 已覆蓋",
+    "$SCIE_INIContainerHint": "插件載入後名稱才會顯示",
+    "$SCIE_HeaderINIAvailable": "可用",
+    "$SCIE_HeaderINIOutOfRange": "超出範圍"
   }
 }

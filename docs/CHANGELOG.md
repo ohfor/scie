@@ -2,6 +2,27 @@
 
 All notable user-facing changes to SCIE.
 
+## [2.6.0] - 2026-03-26
+
+### Added
+- **MCM Containers page: INI-configured containers display**: Below player-marked containers, a new read-only section shows all containers from INI config files. Containers are grouped by source file and split into "Available" (in-range) and "Out of Range" sub-sections. Useful for seeing which pre-configured containers SCIE knows about and whether they're reachable.
+- **HomeConfigs: Waking Nightmare** (SlimeSire): 5 containers — Stockpile, Examination Table, Occult Cache, Cupboard, Sleepers' Quarters
+- **HomeConfigs: King of Worms | Queen of Dawn** (SlimeSire): 4 containers — Vaunted Relics (Chantry), Spectral Armoury + 2 Sload Eggsacs (Plague Pit)
+
+### Fixed
+- **SLID integration: inconsistent container count across cell loads**: External mods querying SCIE's container list via the API could receive different results depending on which cell the player was in. Now returns a stable set (global containers only) by default.
+
+---
+
+## [2.5.9] - 2026-03-09
+
+### Fixed
+- **VR: Material counts showing 0 at crafting stations**: When selecting a recipe, the material list at the bottom showed "0" for all ingredients despite SCIE knowing the correct counts. Root cause: SCIE's inventory count hook was mapped to the wrong VR function address, leaving the function that populates the material display completely unhooked. Added a VR-only hook (Hook 3b) targeting the correct address. SE/AE are completely unaffected — the fix only activates on VR.
+- **VR: Crafting plays sound but doesn't produce items**: The craft handler checks material availability before consuming — since it used the same unhooked function, it found 0 materials and aborted silently. Fixed by the same Hook 3b above.
+- **VR: Hook 5 crash on startup** (hotfix from v2.5.8.1): Hook 5 used `REL::RelocationID` which doesn't support VR, causing a crash on game launch. Changed to `REL::VariantID` with the correct VR offset.
+
+---
+
 ## [2.5.8] - 2026-03-08
 
 ### Changed

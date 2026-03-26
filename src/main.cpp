@@ -251,7 +251,7 @@ namespace {
 
             if (canCraft) {
                 InterlockedIncrement(&s_overrideCount);
-                logger::info("[COBJ-HOOK] Override: {:08X} '{}' — SCIE containers satisfy materials",
+                logger::debug("[COBJ-HOOK] Override: {:08X} '{}' — SCIE containers satisfy materials",
                     cobj->GetFormID(), cobj->createdItem ? cobj->createdItem->GetName() : "(null)");
                 return 1;
             }
@@ -266,7 +266,7 @@ namespace {
         }
 
         bool Install() {
-            REL::Relocation<std::uintptr_t> target{ REL::RelocationID(16561, 16916) };
+            REL::Relocation<std::uintptr_t> target{ REL::VariantID(16561, 16916, 0x21c720) };
             auto addr = target.address();
 
             auto status = MH_CreateHook(
@@ -311,12 +311,12 @@ namespace {
                 auto* sessionMgr = Hooks::CraftingSessionManager::GetSingleton();
 
                 if (a_event->opening) {
-                    logger::info("CraftingMenu OPENED");
+                    logger::debug("CraftingMenu OPENED");
                     // Session may already be initialized by activation handler
                     // OnCraftingMenuOpen is safe to call multiple times
                     sessionMgr->OnCraftingMenuOpen(nullptr);
                 } else {
-                    logger::info("CraftingMenu CLOSED");
+                    logger::debug("CraftingMenu CLOSED");
                     sessionMgr->OnCraftingMenuClose();
 
                     // Always reset GLOB to 0 on menu close

@@ -74,7 +74,6 @@ int oidContainersPrevButton
 int oidContainersNextButton
 int[] oidLocationClearButtons  ; Option IDs for per-location clear buttons
 string[] locationClearNames    ; Location names for each clear button
-
 ; Maintenance page
 int oidModEnabledToggle
 int oidAutoGrantPowersToggle
@@ -120,7 +119,7 @@ int slidMissingCount = 0         ; Number of missing networks displayed
 
 Event OnConfigInit()
     ModName = "SCIE"
-    CurrentVersion = 258  ; v2.5.8: Retire recipe patch ESPs, Hook 5 defense-in-depth
+    CurrentVersion = 260  ; v2.6.0: MCM INI containers display, SLID container fix, SlimeSire homes
     InitializePages()
     InitializeFilteringArrays()
 EndEvent
@@ -220,6 +219,10 @@ Function ResetOptionIDs()
     ; Containers page
     oidContainersPrevButton = -1
     oidContainersNextButton = -1
+    oidContainerOptions = new int[1]
+    containerGlobalIndices = new int[1]
+    oidLocationClearButtons = new int[1]
+    locationClearNames = new string[1]
 
     ; Maintenance page
     oidModEnabledToggle = -1
@@ -349,6 +352,7 @@ Function RenderContainersPage()
         AddTextOption("", "$SCIE_ContainersNone", OPTION_FLAG_DISABLED)
         AddTextOption("", "$SCIE_ContainersHint1", OPTION_FLAG_DISABLED)
         AddTextOption("", "$SCIE_ContainersHint2", OPTION_FLAG_DISABLED)
+        RenderINIContainerSections(5)
         return
     endif
 
@@ -417,6 +421,7 @@ Function RenderContainersPage()
     endwhile
 
     ; Navigation buttons
+    int navSlots = 0
     if totalPages > 1
         AddEmptyOption()
         AddHeaderOption("$SCIE_HeaderNavigation")
@@ -430,7 +435,116 @@ Function RenderContainersPage()
         else
             oidContainersNextButton = AddTextOption("$SCIE_LabelNextPage", ">>", OPTION_FLAG_DISABLED)
         endif
+        navSlots = 4
     endif
+
+    ; INI-configured containers section (read-only)
+    ; Estimate slots used: 1 (header) + optionIdx (containers) + clearIdx (clear buttons) + navSlots
+    RenderINIContainerSections(1 + optionIdx + clearIdx + navSlots)
+EndFunction
+
+Function RenderINIContainerSections(int aiSlotsUsed)
+    ; Check toggle states
+    bool includeLocal = SCIE_NativeFunctions.GetEnableINIContainers()
+    bool includeGlobal = SCIE_NativeFunctions.GetEnableGlobalContainers()
+
+    ; If both toggles are off, skip entirely
+    if !includeLocal && !includeGlobal
+        return
+    endif
+
+    int sourceCount = SCIE_NativeFunctions.GetINISourceCount()
+    if sourceCount == 0
+        return
+    endif
+
+    ; Track slot budget (MCM has ~128 slots total)
+    int slotsRemaining = 125 - aiSlotsUsed
+    if slotsRemaining < 6
+        return
+    endif
+
+    ; Section header (TOP_TO_BOTTOM still active from page start)
+    AddEmptyOption()
+    AddHeaderOption("$SCIE_HeaderINIContainerList")
+    AddTextOption("$SCIE_INIContainerHint", "", OPTION_FLAG_DISABLED)
+    AddEmptyOption()
+    slotsRemaining -= 4
+
+    ; Switch to LEFT_TO_RIGHT: container name left, INI source + state right
+    SetCursorFillMode(LEFT_TO_RIGHT)
+
+    ; Pass 1: Available containers (white text, read-only)
+    bool hasAvailable = false
+    int si = 0
+    while si < sourceCount && slotsRemaining > 2
+        string sourceName = SCIE_NativeFunctions.GetINISourceName(si)
+        string[] names = SCIE_NativeFunctions.GetINISourceContainerNames(sourceName, includeLocal, includeGlobal)
+        int[] states = SCIE_NativeFunctions.GetINISourceContainerStates(sourceName, includeLocal, includeGlobal)
+        bool[] reach = SCIE_NativeFunctions.GetINISourceContainerReachable(sourceName, includeLocal, includeGlobal)
+
+        int ci = 0
+        while ci < names.Length && slotsRemaining > 2
+            if reach[ci]
+                if !hasAvailable
+                    AddHeaderOption("$SCIE_HeaderINIAvailable")
+                    AddEmptyOption()
+                    slotsRemaining -= 2
+                    hasAvailable = true
+                endif
+
+                AddTextOption(names[ci], "", OPTION_FLAG_DISABLED)
+
+                string stateLabel = GetStateLabelFor(states[ci])
+                AddTextOption(sourceName + " " + stateLabel, "", OPTION_FLAG_DISABLED)
+                slotsRemaining -= 2
+            endif
+            ci += 1
+        endwhile
+        si += 1
+    endwhile
+
+    ; Pass 2: Out of range containers (dimmed)
+    bool hasOutOfRange = false
+    si = 0
+    while si < sourceCount && slotsRemaining > 2
+        string sourceName = SCIE_NativeFunctions.GetINISourceName(si)
+        string[] names = SCIE_NativeFunctions.GetINISourceContainerNames(sourceName, includeLocal, includeGlobal)
+        int[] states = SCIE_NativeFunctions.GetINISourceContainerStates(sourceName, includeLocal, includeGlobal)
+        bool[] reach = SCIE_NativeFunctions.GetINISourceContainerReachable(sourceName, includeLocal, includeGlobal)
+
+        int ci = 0
+        while ci < names.Length && slotsRemaining > 2
+            if !reach[ci]
+                if !hasOutOfRange
+                    AddHeaderOption("$SCIE_HeaderINIOutOfRange")
+                    AddEmptyOption()
+                    slotsRemaining -= 2
+                    hasOutOfRange = true
+                endif
+
+                AddTextOption(names[ci], "", OPTION_FLAG_DISABLED)
+
+                string stateLabel = GetStateLabelFor(states[ci])
+                AddTextOption(sourceName + " " + stateLabel, "", OPTION_FLAG_DISABLED)
+                slotsRemaining -= 2
+            endif
+            ci += 1
+        endwhile
+        si += 1
+    endwhile
+
+    ; Restore fill mode for any subsequent rendering
+    SetCursorFillMode(TOP_TO_BOTTOM)
+EndFunction
+
+string Function GetStateLabelFor(int aiState)
+    if aiState == 1
+        return SCIE_NativeFunctions.Translate("$SCIE_StateLocal")
+    elseif aiState == 2
+        return SCIE_NativeFunctions.Translate("$SCIE_StateGlobal")
+    endif
+    return ""
 EndFunction
 
 Function RenderFilteringPage()
@@ -702,7 +816,7 @@ Function RenderAboutPage()
     SetCursorPosition(0)
 
     AddHeaderOption("$SCIE_HeaderSCIE")
-    AddTextOption("$SCIE_LabelVersion", "2.5.8")
+    AddTextOption("$SCIE_LabelVersion", "2.6.0")
     AddTextOption("$SCIE_LabelAuthor", "Ohfor")
 
     AddEmptyOption()
@@ -1175,3 +1289,4 @@ bool Function HandleSLIDMissingRemoveSelect(int option)
     endwhile
     return false
 EndFunction
+

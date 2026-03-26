@@ -21,9 +21,11 @@ Container States:
 ; CONTAINER DISCOVERY
 ; ============================================================================
 
-; Get all registered containers (player-marked and INI-configured)
-; Returns array of ObjectReference for all active crafting containers
-ObjectReference[] Function GetRegisteredContainers() global native
+; Get registered containers known to SCIE
+; abGlobalOnly: if true (default), only returns global containers — the set is
+;   stable regardless of player location. If false, also includes local
+;   containers that happen to be loaded (cell-dependent, may vary between calls).
+ObjectReference[] Function GetRegisteredContainers(bool abGlobalOnly = true) global native
 
 ; Get the state of a specific container
 ; Returns: 0 = off, 1 = local, 2 = global

@@ -1,42 +1,20 @@
-# SCIE CC Forgotten Seasons Compatibility Patch
+# SCIE CC Forgotten Seasons Compatibility Stub
 
-Compatibility patch for **Crafting Inventory Extender (SCIE)** with Creation Club: Forgotten Seasons.
+Save-compatibility stub for **Crafting Inventory Extender (SCIE)** with Creation Club: Forgotten Seasons.
 
-## Requirements
+## What Is This?
 
-- Crafting Inventory Extender (SCIE)
-- CC: Forgotten Seasons (cctwbsse001-puzzledungeon.esm)
+This ESP is an **empty stub** (0 records). It exists solely to prevent "missing plugin" errors when loading saves that previously used the SCIE CC Forgotten Seasons recipe patch.
 
-## Installation
+As of SCIE v2.5.8, recipe visibility is handled natively by the core plugin. The duplicate COBJ records that were previously in this file are no longer needed.
 
-Install after SCIE. This patch has no load order requirements beyond loading after CraftingInventoryExtender.esp.
+## Do I Need This?
 
-## What This Patch Does
-
-The Forgotten Seasons creation adds recipes with `GetItemCount` conditions that check if you have materials in your player inventory. These conditions are evaluated **before** the crafting menu populates, hiding recipes entirely when materials are in SCIE containers instead of your inventory.
-
-This patch adds SCIE-aware duplicate recipes that appear when:
-- SCIE is active (you're at a crafting station with SCIE containers)
-- Materials are NOT in your player inventory (they're in SCIE containers)
-
-The original recipes still work normally when materials are in your inventory.
-
-## Patch Statistics
-
-| Source | Recipes |
-|--------|--------:|
-| CC: Forgotten Seasons | 9 |
-
-### Forgotten Seasons Recipes (9)
-
-Seasonal Crown crafting and transformation recipes from the Puzzle Dungeon creation.
+- **Existing saves** that had the old CC patch installed: Yes, keep this installed to avoid save load errors.
+- **New saves** or saves that never used the CC patch: No, this file is not needed.
 
 ## Technical Details
 
 - **Plugin type**: ESL-flagged (does not use a plugin slot)
-- **Records**: 9 COBJ (Constructible Object)
+- **Records**: 0 (empty stub)
 - **Masters**: Skyrim.esm, CraftingInventoryExtender.esp, cctwbsse001-puzzledungeon.esm
-
-## DLC Content
-
-For official DLC compatibility (Dawnguard, Hearthfire), see the separate **SCIE-DLC** patch.

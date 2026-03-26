@@ -223,6 +223,95 @@ namespace Papyrus {
         }
 
         // ================================================================
+        // INI Container Display (for MCM Containers page)
+        // ================================================================
+
+        /// Get count of INI files with resolved containers
+        std::int32_t GetINISourceCount(RE::StaticFunctionTag*) {
+            return static_cast<std::int32_t>(
+                Services::ContainerRegistry::GetSingleton()->GetINISourceCount());
+        }
+
+        /// Get INI source display name by index
+        RE::BSFixedString GetINISourceName(RE::StaticFunctionTag*, std::int32_t a_index) {
+            auto names = Services::ContainerRegistry::GetSingleton()->GetINISourceNames();
+            if (a_index >= 0 && a_index < static_cast<std::int32_t>(names.size())) {
+                return RE::BSFixedString(names[a_index]);
+            }
+            return "";
+        }
+
+        /// Get container display names for an INI source (filtered by toggle state)
+        std::vector<RE::BSFixedString> GetINISourceContainerNames(RE::StaticFunctionTag*,
+            RE::BSFixedString a_sourceName, bool a_includeLocal, bool a_includeGlobal)
+        {
+            auto data = Services::ContainerRegistry::GetSingleton()->GetINISourceContainers(
+                a_sourceName.c_str(), a_includeLocal, a_includeGlobal);
+            std::vector<RE::BSFixedString> result;
+            result.reserve(data.names.size());
+            for (const auto& name : data.names) {
+                result.emplace_back(name);
+            }
+            return result;
+        }
+
+        /// Get container states for an INI source (parallel array: 1=local, 2=global)
+        std::vector<std::int32_t> GetINISourceContainerStates(RE::StaticFunctionTag*,
+            RE::BSFixedString a_sourceName, bool a_includeLocal, bool a_includeGlobal)
+        {
+            auto data = Services::ContainerRegistry::GetSingleton()->GetINISourceContainers(
+                a_sourceName.c_str(), a_includeLocal, a_includeGlobal);
+            std::vector<std::int32_t> result;
+            result.reserve(data.states.size());
+            for (int state : data.states) {
+                result.push_back(static_cast<std::int32_t>(state));
+            }
+            return result;
+        }
+
+        /// Get source plugin names for an INI source (parallel array with names)
+        std::vector<RE::BSFixedString> GetINISourceContainerPlugins(RE::StaticFunctionTag*,
+            RE::BSFixedString a_sourceName, bool a_includeLocal, bool a_includeGlobal)
+        {
+            auto data = Services::ContainerRegistry::GetSingleton()->GetINISourceContainers(
+                a_sourceName.c_str(), a_includeLocal, a_includeGlobal);
+            std::vector<RE::BSFixedString> result;
+            result.reserve(data.plugins.size());
+            for (const auto& plugin : data.plugins) {
+                result.emplace_back(plugin);
+            }
+            return result;
+        }
+
+        /// Get cell/location names for an INI source (parallel array with names)
+        std::vector<RE::BSFixedString> GetINISourceContainerLocations(RE::StaticFunctionTag*,
+            RE::BSFixedString a_sourceName, bool a_includeLocal, bool a_includeGlobal)
+        {
+            auto data = Services::ContainerRegistry::GetSingleton()->GetINISourceContainers(
+                a_sourceName.c_str(), a_includeLocal, a_includeGlobal);
+            std::vector<RE::BSFixedString> result;
+            result.reserve(data.locations.size());
+            for (const auto& loc : data.locations) {
+                result.emplace_back(loc);
+            }
+            return result;
+        }
+
+        /// Get reachability for an INI source (parallel array: 1=reachable, 0=out of range)
+        std::vector<bool> GetINISourceContainerReachable(RE::StaticFunctionTag*,
+            RE::BSFixedString a_sourceName, bool a_includeLocal, bool a_includeGlobal)
+        {
+            auto data = Services::ContainerRegistry::GetSingleton()->GetINISourceContainers(
+                a_sourceName.c_str(), a_includeLocal, a_includeGlobal);
+            std::vector<bool> result;
+            result.reserve(data.reachable.size());
+            for (int r : data.reachable) {
+                result.push_back(r != 0);
+            }
+            return result;
+        }
+
+        // ================================================================
         // MCM Configuration Functions
         // ================================================================
 
@@ -677,8 +766,9 @@ namespace Papyrus {
         constexpr std::string_view APIScriptName = "SCIE_API"sv;
 
         /// Get all registered containers
-        std::vector<RE::TESObjectREFR*> API_GetRegisteredContainers(RE::StaticFunctionTag*) {
-            return Services::APIService::GetSingleton()->GetRegisteredContainers();
+        /// @param a_globalOnly If true, only return global containers (stable across cells)
+        std::vector<RE::TESObjectREFR*> API_GetRegisteredContainers(RE::StaticFunctionTag*, bool a_globalOnly) {
+            return Services::APIService::GetSingleton()->GetRegisteredContainers(a_globalOnly);
         }
 
         /// Get container state (0=off, 1=local, 2=global)
@@ -784,6 +874,15 @@ namespace Papyrus {
         a_vm->RegisterFunction("GetPlayerContainerStates", ScriptName, GetPlayerContainerStates);
         a_vm->RegisterFunction("SetPlayerContainerState", ScriptName, SetPlayerContainerState);
         a_vm->RegisterFunction("RemovePlayerContainersByLocation", ScriptName, RemovePlayerContainersByLocation);
+
+        // INI Container Display (MCM Containers page)
+        a_vm->RegisterFunction("GetINISourceCount", ScriptName, GetINISourceCount);
+        a_vm->RegisterFunction("GetINISourceName", ScriptName, GetINISourceName);
+        a_vm->RegisterFunction("GetINISourceContainerNames", ScriptName, GetINISourceContainerNames);
+        a_vm->RegisterFunction("GetINISourceContainerStates", ScriptName, GetINISourceContainerStates);
+        a_vm->RegisterFunction("GetINISourceContainerPlugins", ScriptName, GetINISourceContainerPlugins);
+        a_vm->RegisterFunction("GetINISourceContainerLocations", ScriptName, GetINISourceContainerLocations);
+        a_vm->RegisterFunction("GetINISourceContainerReachable", ScriptName, GetINISourceContainerReachable);
 
         // MCM Configuration functions
         a_vm->RegisterFunction("GetMaxDistance", ScriptName, GetMaxDistance);

@@ -5,6 +5,9 @@
 #include "Services/SLIDIntegration.h"
 #include "Hooks/CraftingSession.h"
 
+#include <algorithm>
+#include <numeric>
+
 namespace Services {
 
     namespace {
@@ -946,6 +949,147 @@ namespace Services {
         return result;
     }
 
+    std::size_t ContainerRegistry::GetINISourceCount() const {
+        // m_iniSources is read-only after Initialize(), no lock needed
+        return m_iniSources.size();
+    }
+
+    std::vector<std::string> ContainerRegistry::GetINISourceNames() const {
+        std::vector<std::string> names;
+        names.reserve(m_iniSources.size());
+        for (const auto& [name, entries] : m_iniSources) {
+            names.push_back(name);
+        }
+        return names;
+    }
+
+    ContainerRegistry::INISourceData ContainerRegistry::GetINISourceContainers(
+        const std::string& a_displayName, bool a_includeLocal, bool a_includeGlobal) const
+    {
+        INISourceData result;
+
+        auto it = m_iniSources.find(a_displayName);
+        if (it == m_iniSources.end()) {
+            return result;
+        }
+
+        for (const auto& entry : it->second) {
+            // Filter by type
+            if (entry.isGlobal && !a_includeGlobal) continue;
+            if (!entry.isGlobal && !a_includeLocal) continue;
+
+            // Look up the form to get a display name, location, and reachability
+            std::string name;
+            std::string location;
+            int isReachable = 0;
+            auto* form = RE::TESForm::LookupByID(entry.formID);
+            if (form) {
+                auto* ref = form->As<RE::TESObjectREFR>();
+                if (ref) {
+                    auto* baseObj = ref->GetBaseObject();
+                    if (baseObj) {
+                        const char* baseName = baseObj->GetName();
+                        if (baseName && baseName[0]) {
+                            name = baseName;
+                        }
+                    }
+
+                    // Append suffixes matching GetPlayerContainerPage pattern
+                    if (name.empty()) {
+                        name = fmt::format("Container {:08X}", entry.formID);
+                    }
+
+                    if (IsContainerUnsafe(ref)) {
+                        name += TranslationService::GetSingleton()->GetTranslation("$SCIE_SuffixUnsafe");
+                    }
+                    if (entry.isGlobal && IsContainerNonPersistent(ref)) {
+                        name += TranslationService::GetSingleton()->GetTranslation("$SCIE_SuffixNonPersistent");
+                    }
+
+                    // Get cell/location name if loaded
+                    auto* cell = ref->GetParentCell();
+                    if (cell) {
+                        const char* fullName = cell->GetName();
+                        if (fullName && fullName[0]) {
+                            location = fullName;
+                        } else {
+                            const char* cellName = cell->GetFormEditorID();
+                            if (cellName && cellName[0]) {
+                                location = cellName;
+                            }
+                        }
+                    }
+
+                    // Determine reachability
+                    if (entry.isGlobal) {
+                        // Global containers are reachable if the ref is loaded
+                        isReachable = 1;
+                    } else {
+                        // Local containers are reachable if in player's cell and within scan range
+                        auto* player = RE::PlayerCharacter::GetSingleton();
+                        if (player && cell) {
+                            auto* playerCell = player->GetParentCell();
+                            if (playerCell && playerCell == cell) {
+                                float distance = player->GetPosition().GetDistance(ref->GetPosition());
+                                float maxRadius = INISettings::GetSingleton()->GetMaxContainerDistance();
+                                if (distance <= maxRadius) {
+                                    isReachable = 1;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Form exists but isn't a reference
+                    const char* formName = form->GetName();
+                    name = (formName && formName[0]) ? formName : fmt::format("Container {:08X}", entry.formID);
+                }
+            } else {
+                name = fmt::format("Container {:08X}", entry.formID);
+            }
+
+            // Check for player override
+            {
+                std::lock_guard lock(m_overridesMutex);
+                auto overIt = m_playerOverrides.find(entry.formID);
+                if (overIt != m_playerOverrides.end()) {
+                    name += TranslationService::GetSingleton()->GetTranslation("$SCIE_SuffixOverridden");
+                }
+            }
+
+            result.names.push_back(std::move(name));
+            result.states.push_back(entry.isGlobal ? 2 : 1);
+            result.plugins.push_back(entry.plugin);
+            result.locations.push_back(std::move(location));
+            result.reachable.push_back(isReachable);
+        }
+
+        // Sort: global entries before local entries
+        if (result.names.size() > 1) {
+            std::vector<std::size_t> indices(result.names.size());
+            std::iota(indices.begin(), indices.end(), 0);
+            std::stable_sort(indices.begin(), indices.end(), [&](std::size_t a, std::size_t b) {
+                return result.states[a] > result.states[b];  // 2 (global) before 1 (local)
+            });
+
+            INISourceData sorted;
+            sorted.names.reserve(indices.size());
+            sorted.states.reserve(indices.size());
+            sorted.plugins.reserve(indices.size());
+            sorted.locations.reserve(indices.size());
+            sorted.reachable.reserve(indices.size());
+            for (auto idx : indices) {
+                sorted.names.push_back(std::move(result.names[idx]));
+                sorted.states.push_back(result.states[idx]);
+                sorted.plugins.push_back(std::move(result.plugins[idx]));
+                sorted.locations.push_back(std::move(result.locations[idx]));
+                sorted.reachable.push_back(result.reachable[idx]);
+            }
+            return sorted;
+        }
+
+        return result;
+    }
+
     void ContainerRegistry::BackfillOverrideMetadata() {
         std::lock_guard lock(m_overridesMutex);
 
@@ -1097,6 +1241,8 @@ namespace Services {
             return;
         }
 
+        std::string displayName = a_path.filename().string();
+
         std::string line;
         bool inContainersSection = false;
         bool inGlobalSection = false;
@@ -1176,6 +1322,13 @@ namespace Services {
                             m_iniConfigured.insert(*formID);
                             logger::debug("INI configured container: {:08X}", *formID);
                         }
+                        // Extract plugin name from key (format: "Plugin.esp|FormID")
+                        std::string pluginName;
+                        auto pipePos = key.find('|');
+                        if (pipePos != std::string::npos) {
+                            pluginName = key.substr(0, pipePos);
+                        }
+                        m_iniSources[displayName].push_back({*formID, inGlobalSection, pluginName});
                     } else {
                         // =false actively removes a container added by an earlier INI
                         if (inGlobalSection) {

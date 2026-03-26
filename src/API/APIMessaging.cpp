@@ -136,68 +136,7 @@ namespace API {
     }
 
     std::vector<RE::TESObjectREFR*> APIMessaging::GetRegisteredContainers() const {
-        std::vector<RE::TESObjectREFR*> result;
-
-        auto* registry = Services::ContainerRegistry::GetSingleton();
-        auto* settings = Services::INISettings::GetSingleton();
-
-        // Get player-marked containers from registry
-        auto overrides = registry->GetPlayerOverrides();
-        for (const auto& [formID, info] : overrides) {
-            // Only include active containers (local or global state)
-            if (info.state == Services::ContainerState::kLocal ||
-                info.state == Services::ContainerState::kGlobal)
-            {
-                auto* form = RE::TESForm::LookupByID(formID);
-                auto* refr = form ? form->As<RE::TESObjectREFR>() : nullptr;
-                if (refr) {
-                    result.push_back(refr);
-                }
-            }
-        }
-
-        // Add INI-configured containers that are enabled
-        if (settings->GetEnableINIContainers()) {
-            float maxDistance = settings->GetMaxContainerDistance();
-            auto nearbyContainers = Services::ContainerManager::GetSingleton()->GetNearbyCraftingContainers(maxDistance);
-            for (auto* container : nearbyContainers) {
-                if (container) {
-                    // Check if not already in result
-                    bool found = false;
-                    for (auto* existing : result) {
-                        if (existing && existing->GetFormID() == container->GetFormID()) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        result.push_back(container);
-                    }
-                }
-            }
-        }
-
-        // Add global containers
-        if (settings->GetEnableGlobalContainers()) {
-            auto globalContainers = registry->GetGlobalContainers();
-            for (auto* container : globalContainers) {
-                if (container) {
-                    // Check if not already in result
-                    bool found = false;
-                    for (auto* existing : result) {
-                        if (existing && existing->GetFormID() == container->GetFormID()) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        result.push_back(container);
-                    }
-                }
-            }
-        }
-
-        return result;
+        return Services::APIService::GetSingleton()->GetRegisteredContainers();
     }
 
     std::int32_t APIMessaging::GetContainerState(RE::TESObjectREFR* a_container) const {

@@ -9,6 +9,13 @@ namespace Services {
         kGlobal = 2   // Global container (accessible from anywhere)
     };
 
+    /// Metadata for an INI-configured container (for MCM display)
+    struct INIContainerEntry {
+        RE::FormID formID;
+        bool isGlobal;       // [GlobalContainers] vs [Containers]
+        std::string plugin;  // Source plugin name (e.g., "Skyrim.esm")
+    };
+
     /// Metadata for a player-overridden container
     struct ContainerInfo {
         RE::FormID formID = 0;
@@ -117,6 +124,19 @@ namespace Services {
         };
         PlayerContainerPage GetPlayerContainerPage(int a_page, int a_pageSize) const;
 
+        /// INI source display for MCM Containers page
+        std::size_t GetINISourceCount() const;
+        std::vector<std::string> GetINISourceNames() const;
+
+        struct INISourceData {
+            std::vector<std::string> names;     // container display names (with suffixes)
+            std::vector<int> states;            // 1=local, 2=global
+            std::vector<std::string> plugins;   // source plugin for each container
+            std::vector<std::string> locations; // cell/location name for each container
+            std::vector<int> reachable;         // 1=reachable now, 0=out of range/unloaded
+        };
+        INISourceData GetINISourceContainers(const std::string& a_displayName, bool a_includeLocal, bool a_includeGlobal) const;
+
         /// Check if Legacy of the Dragonborn is installed (for compatibility info)
         static bool IsLOTDInstalled();
 
@@ -206,6 +226,9 @@ namespace Services {
         // Player overrides (saved in cosave) - replaces old m_manuallyEnabled/m_manuallyDisabled
         std::unordered_map<RE::FormID, ContainerInfo> m_playerOverrides;
         mutable std::mutex m_overridesMutex;
+
+        // INI source tracking for MCM display (populated during Initialize, read-only after)
+        std::map<std::string, std::vector<INIContainerEntry>> m_iniSources;
 
         // EditorID -> FormID cache (for deferred resolution)
         struct PendingEditorID {

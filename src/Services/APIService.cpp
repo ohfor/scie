@@ -151,31 +151,32 @@ namespace Services {
             static_cast<int>(outItems.size()), a_stationType);
     }
 
-    std::vector<RE::TESObjectREFR*> APIService::GetRegisteredContainers() const {
+    std::vector<RE::TESObjectREFR*> APIService::GetRegisteredContainers(bool a_globalOnly) const {
         std::vector<RE::TESObjectREFR*> result;
 
         auto* registry = ContainerRegistry::GetSingleton();
         auto* settings = INISettings::GetSingleton();
-
-        // Get player-marked containers from registry
-        auto overrides = registry->GetPlayerOverrides();
         std::unordered_set<RE::FormID> addedFormIDs;
 
+        // Player-overridden containers
+        auto overrides = registry->GetPlayerOverrides();
         for (const auto& [formID, info] : overrides) {
-            // Only include active containers (local or global state)
-            if (info.state == ContainerState::kLocal ||
-                info.state == ContainerState::kGlobal)
-            {
-                auto* form = RE::TESForm::LookupByID(formID);
-                auto* refr = form ? form->As<RE::TESObjectREFR>() : nullptr;
-                if (refr) {
-                    result.push_back(refr);
-                    addedFormIDs.insert(formID);
-                }
+            if (a_globalOnly && info.state != ContainerState::kGlobal) {
+                continue;
+            }
+            if (info.state == ContainerState::kOff) {
+                continue;
+            }
+
+            auto* form = RE::TESForm::LookupByID(formID);
+            auto* refr = form ? form->As<RE::TESObjectREFR>() : nullptr;
+            if (refr) {
+                result.push_back(refr);
+                addedFormIDs.insert(formID);
             }
         }
 
-        // Add global containers
+        // INI-configured global containers
         if (settings->GetEnableGlobalContainers()) {
             auto globalContainers = registry->GetGlobalContainers();
             for (auto* container : globalContainers) {
